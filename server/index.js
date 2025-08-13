@@ -20,47 +20,344 @@ const pool = mysql.createPool({
 
 // Crear tabla si no existe
 async function initializeDatabase() {
-  const createTableQuery = `
+  // Crear tabla zonas si no existe
+  const createZonasTableQuery = `
+    CREATE TABLE IF NOT EXISTS zonas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      zona VARCHAR(255) NOT NULL COMMENT 'Nombre de la zona principal',
+      subzona VARCHAR(255) NOT NULL COMMENT 'Subdivisión de la zona',
+      tienda VARCHAR(255) NOT NULL COMMENT 'Nombre de la tienda',
+      empresa VARCHAR(255) NOT NULL COMMENT 'Empresa asociada',
+      UNIQUE KEY uk_zona_completa (zona, subzona, tienda, empresa)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `;
+
+  // Crear tabla actividades si no existe (con relación a zonas)
+  const createActividadesTableQuery = `
     CREATE TABLE IF NOT EXISTS actividades (
       id INT AUTO_INCREMENT PRIMARY KEY,
       nombre VARCHAR(255) NOT NULL,
       estado ENUM('pendiente', 'en_progreso', 'programado', 'en_ejecucion', 'completado') NOT NULL,
       responsable VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
+      zona_id INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `;
-  await pool.query(createTableQuery);
+
+  try {
+    // Ejecutar las consultas en orden
+    await pool.query(createZonasTableQuery);
+    await pool.query(createActividadesTableQuery);
+    
+    console.log('Tablas creadas/existen correctamente');
+    
+    // Opcional: Insertar datos iniciales si es necesario
+    await insertInitialZonasData();
+  } catch (error) {
+    console.error('Error al inicializar la base de datos:', error);
+    throw error; // Propaga el error para manejo superior
+  }
 }
 
+// Función para datos iniciales
+async function insertInitialZonasData() {
+  const checkDataQuery = `SELECT COUNT(*) as count FROM zonas`;
+  const [rows] = await pool.query(checkDataQuery);
+  
+  if (rows[0].count === 0) {
+    const insertQuery = `INSERT INTO zonas (empresa, tienda, subzona, zona) VALUES ?`;
+    
+    const values = [
+      ["GG CCS 2024, C.A.", "SHOE BOX", "Sambil Chacao", "Caracas"],
+      ["EE CCS 2024, C.A.", "SHOE BOX", "Sambil Chacao", "Caracas"],
+      ["HH CCS 2024, C.A.", "FOREVER 21", "Sambil Chacao", "Caracas"],
+      ["JJ CCS 2024, C.A.", "ILAHUI", "Sambil Chacao", "Caracas"],
+      ["II CCS 2024, C.A.", "SB LIFEWEAR", "Sambil Chacao", "Caracas"],
+      ["KK CCS 2024, C.A.", "LEE COOPER", "Sambil Chacao", "Caracas"],
+      ["CC CCS 2022, C.A.", "MR PRICE", "Sambil Chacao", "Caracas"],
+      ["DD CCS 2023, C.A.", "GOLDEN ROSE", "Sambil Chacao", "Caracas"],
+      ["MM CCS 2024, C.A.", "SB PUMA", "Sambil Chacao", "Caracas"],
+      ["BB LIDER 2022, C.A.", "SHOE BOX", "Lider", "Caracas"],
+      ["CC LIDER 2022, C.A.", "MR PRICE", "Lider", "Caracas"],
+      ["AA LIDER 2022, C.A.", "ILAHUI", "Lider", "Caracas"],
+      ["FF LIDER 2024, C.A.", "MOTARRO", "Lider", "Caracas"],
+      ["GG LIDER 2024, C.A.", "FOREVER 21 SHOES", "Lider", "Caracas"],
+      ["DD CERRO VERDE 2022, C.A.", "MR PRICE", "Cerro Verde", "Caracas"],
+      ["AA CERRO VERDE 2022, C.A.", "FOREVER 21", "Cerro Verde", "Caracas"],
+      ["BB CERRO VERDE 2022, C.A.", "ILAHUI", "Cerro Verde", "Caracas"],
+      ["CC CERRO VERDE 2022, C.A.", "SHOE BOX", "Cerro Verde", "Caracas"],
+      ["DD CANDELARIA 2022, C.A.", "ILAHUI", "Sambil Candelaria", "Caracas"],
+      ["BB CANDELARIA 2022, C.A.", "SHOE BOX", "Sambil Candelaria", "Caracas"],
+      ["CC CANDELARIA 2022, C.A.", "MR PRICE", "Sambil Candelaria", "Caracas"],
+      ["AA CANDELARIA 2023, C.A.", "FOREVER 21 SHOES", "Sambil Candelaria", "Caracas"],
+      ["AA CARRIZAL 2024, C.A.", "MR PRICE", "La Cascada", "Caracas"],
+      ["CC CARRIZAL 2024, C.A.", "ILAHUI", "La Cascada", "Caracas"],
+      ["BB CARRIZAL 2024, C.A.", "SHOE BOX", "La Cascada", "Caracas"],
+      ["DD CARRIZAL 2024, C.A.", "FOREVER 21 SHOES", "La Cascada", "Caracas"],
+      ["EE CARRIZAL 2024, C.A.", "MOTARRO", "La Cascada", "Caracas"],
+      ["AA MILLENNIUM 2024, C.A.", "MR PRICE", "Millennium", "Caracas"],
+      ["BB MILLENNIUM 2024, C.A.", "SHOE BOX", "Millennium", "Caracas"],
+      ["CC MILLENNIUM 2024, C.A.", "ILAHUI", "Millennium", "Caracas"],
+      ["DD MILLENNIUM 2024, C.A.", "MOTARRO", "Millennium", "Caracas"],
+      ["AA RECREO 2023, C.A.", "ILAHUI", "El Recreo", "Caracas"],
+      ["DD RECREO 2023, C.A.", "SHOE BOX", "El Recreo", "Caracas"],
+      ["AA CCCT 2023, C.A.", "SHOE BOX", "CCCT", "Caracas"],
+      ["BB CCCT 2023, C.A.", "ILAHUI", "CCCT", "Caracas"],
+      ["AA CENTER 2024, C.A.", "SHOE BOX", "Candelaria Center", "Caracas"],
+      ["AA PARAISO 2024, C.A.", "MOTARRO", "Multiplaza Paraiso", "Caracas"],
+      ["BB PARAISO 2024, C.A.", "SHOE BOX", "Multiplaza Paraiso", "Caracas"],
+      ["DD MGTA 2022, C.A.", "SHOE BOX", "Centro", "Margarita"],
+      ["EE MGTA 2022, C.A.", "OUTLET", "Centro", "Margarita"],
+      ["FF MGTA 2022, C.A.", "SHOE BOX", "Centro", "Margarita"],
+      ["GG MGTA 2022, C.A.", "MR PRICE", "Centro", "Margarita"],
+      ["HH MGTA 2022, C.A.", "MR PRICE", "Centro", "Margarita"],
+      ["JJ MGTA 2022, C.A.", "OUTLET", "Centro", "Margarita"],
+      ["BB MGTA 2022, C.A.", "FOREVER 21 SHOES", "Sambil", "Margarita"],
+      ["CC MGTA 2022, C.A.", "ILAHUI", "Sambil", "Margarita"],
+      ["RR MGTA 2022, C.A.", "MR PRICE", "Sambil", "Margarita"],
+      ["SS MGTA 2022, C.A.", "MOTARRO", "Sambil", "Margarita"],
+      ["QQ MGTA 2023, C.A.", "SHOE BOX", "Sambil", "Margarita"],
+      ["MM MGTA 2022, C.A.", "ILAHUI", "La Vela", "Margarita"],
+      ["NN MGTA 2022, C.A.", "FOREVER 21", "La Vela", "Margarita"],
+      ["OO MGTA 2022, C.A.", "SHOE BOX", "La Vela", "Margarita"],
+      ["AA LA VELA MGTA 2024, C.A.", "GOLDEN ROSE", "La Vela", "Margarita"],
+      ["LL MGTA 2023, C.A", "MR PRICE", "La Vela", "Margarita"],
+      ["KK MGTA 2022, C.A.", "SHOE BOX", "Costazul", "Margarita"],
+      ["AA COSTAZUL 2024, C.A.", "MR PRICE", "Costazul", "Margarita"],
+      ["AA LOS CEDROS 2024, C.A.", "IPT", "Los Cedros", "Margarita"],
+      ["CC LOS CEDROS 2024, C.A.", "DIA LOCO", "Los Cedros", "Margarita"],
+      ["CC VLC 2022, C.A.", "FOREVER 21", "Sambil", "Margarita"],
+      ["DD VLC 2022, C.A.", "MR PRICE", "Sambil", "Margarita"],
+      ["AA VLC 2022, C.A.", "SHOE BOX", "Sambil", "Valencia"],
+      ["FF VLC 2023, C.A.", "ILAHUI", "Sambil", "Valencia"],
+      ["GG VLC 2023, C.A.", "MOTARRO", "Sambil", "Valencia"],
+      ["CC METROPOLIS VLC 2024, C.A.", "ILAHUI", "Metropolis", "Valencia"],
+      ["BB METROPOLIS VLC 2024, C.A.", "SHOE BOX", "Metropolis", "Valencia"],
+      ["DD METROPOLIS VLC 2024, C.A.", "SB WOMEN", "Metropolis", "Valencia"],
+      ["AA METROPOLIS VLC 2024, C.A.", "MR PRICE", "Metropolis", "Valencia"],
+      ["AA LA GRANJA 2024, C.A.", "SHOE BOX", "La Granja", "Valencia"],
+      ["EE VLC 2022, C.A.", "ILAHUI", "La Granja", "Valencia"],
+      ["CC MCY 2022, C.A.", "DIA LOCO", "Los Aviadores", "Maracay"],
+      ["AA MCY 2022, C.A.", "MR PRICE", "Los Aviadores", "Maracay"],
+      ["DD MCY 2022, C.A.", "SHOE BOX", "Los Aviadores", "Maracay"],
+      ["EE MCY 2022, C.A.", "ILAHUI", "Los Aviadores", "Maracay"],
+      ["II MCY 2023, C.A.", "MR PRICE", "Unicentro", "Maracay"],
+      ["GG MCY 2023, C.A.", "SHOE BOX", "Unicentro", "Maracay"],
+      ["FF MCY 2023, C.A.", "ILAHUI", "Unicentro", "Maracay"],
+      ["JJ MCY 2024, C.A.", "MOTARRO", "Unicentro", "Maracay"],
+      ["BB MCY CENTRO 2024, C.A.", "SHOE BOX", "Centro", "Maracay"],
+      ["AA MCY CENTRO 2024, C.A.", "MR PRICE", "Centro", "Maracay"],
+      ["EE PF 2024, C.A.", "ILAHUI", "Sambil", "Punto Fijo"],
+      ["HH PF 2024, C.A.", "MR PRICE", "Sambil", "Punto Fijo"],
+      ["BB PF 2022, C.A.", "SHOE BOX", "Sambil", "Punto Fijo"],
+      ["CC PF 2023, C.A.", "FOREVER 21 SHOES", "Sambil", "Punto Fijo"],
+      ["FF PF 2024, C.A.", "MR PRICE", "Virtudes", "Punto Fijo"],
+      ["AA PF 2022, C.A.", "ILAHUI", "Virtudes", "Punto Fijo"],
+      ["DD PF 2023, C.A.", "SHOE BOX", "Virtudes", "Punto Fijo"],
+      ["II PF 2024, C.A.", "FOREVER 21 SHOES", "Virtudes", "Punto Fijo"],
+      ["EE BQTO 2024, C.A.", "MR PRICE", "Sambil", "Barquisimeto"],
+      ["DD BQTO 2024, C.A", "ILAHUI", "Sambil", "Barquisimeto"],
+      ["BB TRINITARIAS 2023, C.A.", "SHOE BOX", "Trinitarias", "Barquisimeto"],
+      ["AA TRINITARIAS 2023, C.A.", "MR PRICE", "Trinitarias", "Barquisimeto"],
+      ["CC TRINITARIAS 2024, C.A.", "ILAHUI", "Trinitarias", "Barquisimeto"],
+      ["AB PZO 2020, C.A.", "ILAHUI", "Orinokia", "Puerto Ordaz"],
+      ["AA PZO 2020, C.A.", "SB LIFEWEAR", "Orinokia", "Puerto Ordaz"],
+      ["CC PZO 2022, C.A.", "MR PRICE", "Orinokia", "Puerto Ordaz"],
+      ["BB PZO 2022, C.A.", "MOTARRO", "Orinokia", "Puerto Ordaz"],
+      ["DD PZO 2022, C.A.", "SHOE BOX", "Orinokia", "Puerto Ordaz"],
+      ["AB CUMANA 2021, C.A.", "SHOE BOX", "Hiper Galerias Traki", "Cumana"],
+      ["CC CUM 2022, C.A.", "ILAHUI", "Hiper Galerias Traki", "Cumana"],
+      ["AA MCBO 2023, C.A.", "SHOE BOX", "Sambil", "Maracaibo"],
+      ["BB MCBO 2023, C.A.", "ILAHUI", "Sambil", "Maracaibo"],
+      ["CC MCBO 2024, C.A.", "MR PRICE", "Sambil", "Maracaibo"],
+      ["DD MCBO 2024, C.A.", "FOREVER 21", "Sambil", "Maracaibo"],
+      ["CC MUN 2024, C.A.", "ILAHUI", "La Cascada", "Maturin"],
+      ["BB MUN 2022, C.A.", "SHOE BOX", "La Cascada", "Maturin"],
+      ["AA MUN 2022, C.A.", "MR PRICE", "La Cascada", "Maturin"],
+      ["BB VLP 2024, C.A.", "SHOE BOX", "Traki", "Guarico"],
+      ["AA VLP 2022, C.A.", "MR PRICE", "Traki", "Guarico"],
+      ["CC GUACARA 2025, C.A.", "MR PRICE", "Hiper Galerias Traki", "Guacara"],
+      ["BB GUACARA 2025, C.A.", "SHOE BOX", "Hiper Galerías Traki", "Guacara"],
+      ["BB SCI 2023, C.A.", "SHOE BOX", "Sambil", "San Cristobal"],
+      ["AA SCI 2023, C.A.", "MR PRICE", "Sambil", "San Cristobal"],
+      ["CC SCI 2022, C.A.", "ILAHUI", "Sambil", "San Cristobal"],
+      ["DD SCI 2024, C.A.", "FOREVER 21 SHOES", "Sambil", "San Cristobal"],
+      ["BB LEC 2022, C.A.", "MR PRICE", "Nueva Esparta", "Lecheria"],
+      ["AA LEC 2022, C.A.", "ILAHUI", "Nueva Esparta", "Lecheria"],
+      ["CC LEC 2022, C.A.", "SHOE BOX", "Nueva Esparta", "Lecheria"],
+      ["DD LEC 2022, C.A.", "MOTARRO", "Nueva Esparta", "Lecheria"],
+      ["AA APU 2022, C.A.", "MR PRICE", "Traki", "Apure"],
+      ["BB APU 2022, C.A.", "SHOE BOX", "Traki", "Apure"],
+      ["AA PLC 2023, C.A.", "MR PRICE", "Sucre", "Puerto la Cruz"],
+      ["AA PLAZA MAYOR 2024, C.A.", "ILAHUI", "Lecheria", "Puerto la Cruz"],
+      ["EE TRINITARIAS 2024, S.A", "MOTARRO", "Trinitarias", "Barquisimeto"],
+      ["GG BQTO 2024, C.A.", "SHOE BOX", "Sambil", "Barquisimeto"],
+      ["BB MCY 2022, C.A", "FOREVER 21", "Los Aviadores", "Maracay"],
+      ["BB LOS CEDROS 2024, C.A", "OHWOW", "Los Cedros", "Margarita"],
+      ["AA CCS OUTLET 2025, C.A.", "FOREVER 21", "Sambil Chacao", "Caracas"],
+      ["BB CCS OUTLET 2025, C.A.", "SHOE BOX", "Sambil Chacao", "Caracas"],
+      ["CC CUM 2022, C.A.", "MOTARRO", "Hiper Galerias Traki", "Cumana"]
+    ];
+    
+    try {
+      await pool.query(insertQuery, [values]);
+      console.log(`${values.length} registros de zonas insertados correctamente`);
+    } catch (error) {
+      console.error('Error al insertar datos iniciales:', error);
+      throw error;
+    }
+  }
+}
 // Endpoints
-app.get('/api/actividades', async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM actividades ORDER BY created_at DESC');
-  res.json(rows);
-});
 
+// Endpoint para crear una nueva actividad con zona
 app.post('/api/actividades', async (req, res) => {
-  const { nombre, estado, responsable } = req.body;
-  const [result] = await pool.query(
-    'INSERT INTO actividades (nombre, estado, responsable) VALUES (?, ?, ?)',
-    [nombre, estado, responsable]
-  );
-  res.status(201).json({ id: result.insertId });
+  const { nombre, estado, responsable, zona_id } = req.body;
+  
+  try {
+    // Verificar si la zona existe si se proporciona
+    if (zona_id) {
+      const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
+      if (zona.length === 0) {
+        return res.status(400).json({ error: 'La zona especificada no existe' });
+      }
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO actividades (nombre, estado, responsable, zona_id) VALUES (?, ?, ?, ?)',
+      [nombre, estado, responsable, zona_id || null]
+    );
+    
+    // Obtener la actividad recién creada con los datos de la zona
+    const [newActivity] = await pool.query(`
+      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      FROM actividades a
+      LEFT JOIN zonas z ON a.zona_id = z.id
+      WHERE a.id = ?
+    `, [result.insertId]);
+    
+    res.status(201).json(newActivity[0]);
+  } catch (error) {
+    console.error('Error al crear actividad:', error);
+    res.status(500).json({ error: 'Error al crear actividad' });
+  }
 });
 
-app.put('/api/actividades/:id', async (req, res) => {
-  const { id } = req.params;
-  const { nombre, estado, responsable } = req.body;
-  await pool.query(
-    'UPDATE actividades SET nombre = ?, estado = ?, responsable = ? WHERE id = ?',
-    [nombre, estado, responsable, id]
-  );
-  res.status(200).json({ message: 'Actividad actualizada' });
-});
-
+// Endpoint para eliminar una actividad
 app.delete('/api/actividades/:id', async (req, res) => {
   const { id } = req.params;
-  await pool.query('DELETE FROM actividades WHERE id = ?', [id]);
-  res.status(200).json({ message: 'Actividad eliminada' });
+  
+  try {
+    // Verificar si la actividad existe
+    const [actividad] = await pool.query('SELECT id FROM actividades WHERE id = ?', [id]);
+    if (actividad.length === 0) {
+      return res.status(404).json({ error: 'Actividad no encontrada' });
+    }
+
+    // Eliminar la actividad
+    await pool.query('DELETE FROM actividades WHERE id = ?', [id]);
+    
+    res.status(204).send(); // 204 No Content es estándar para DELETE exitoso
+  } catch (error) {
+    console.error('Error al eliminar actividad:', error);
+    res.status(500).json({ error: 'Error al eliminar actividad' });
+  }
+});
+
+// Endpoint para obtener todas las actividades con información de zona
+app.get('/api/actividades', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        a.id, a.nombre, a.estado, a.responsable, a.created_at,
+        z.id as zona_id, z.zona, z.subzona, z.tienda, z.empresa
+      FROM actividades a
+      LEFT JOIN zonas z ON a.zona_id = z.id
+      ORDER BY a.created_at DESC
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener actividades:', error);
+    res.status(500).json({ error: 'Error al obtener actividades' });
+  }
+});
+
+// Endpoint para actualizar una actividad (incluyendo zona)
+app.put('/api/actividades/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre, estado, responsable, zona_id } = req.body;
+  
+  try {
+    // Verificar si la zona existe si se proporciona
+    if (zona_id) {
+      const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
+      if (zona.length === 0) {
+        return res.status(400).json({ error: 'La zona especificada no existe' });
+      }
+    }
+
+    await pool.query(
+      'UPDATE actividades SET nombre = ?, estado = ?, responsable = ?, zona_id = ? WHERE id = ?',
+      [nombre, estado, responsable, zona_id || null, id]
+    );
+    
+    // Obtener la actividad actualizada con los datos de la zona
+    const [updatedActivity] = await pool.query(`
+      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      FROM actividades a
+      LEFT JOIN zonas z ON a.zona_id = z.id
+      WHERE a.id = ?
+    `, [id]);
+    
+    res.status(200).json(updatedActivity[0]);
+  } catch (error) {
+    console.error('Error al actualizar actividad:', error);
+    res.status(500).json({ error: 'Error al actualizar actividad' });
+  }
+});
+
+// Nuevos endpoints para zonas
+app.get('/api/zonas', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM zonas ORDER BY zona, subzona');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener zonas:', error);
+    res.status(500).json({ error: 'Error al obtener zonas' });
+  }
+});
+
+app.post('/api/zonas', async (req, res) => {
+  const { zona, subzona, tienda, empresa } = req.body;
+  
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO zonas (zona, subzona, tienda, empresa) VALUES (?, ?, ?, ?)',
+      [zona, subzona, tienda, empresa]
+    );
+    
+    const [newZona] = await pool.query('SELECT * FROM zonas WHERE id = ?', [result.insertId]);
+    res.status(201).json(newZona[0]);
+  } catch (error) {
+    console.error('Error al crear zona:', error);
+    res.status(500).json({ error: 'Error al crear zona' });
+  }
+});
+
+app.get('/api/zonas/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [rows] = await pool.query('SELECT * FROM zonas WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Zona no encontrada' });
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error al obtener zona:', error);
+    res.status(500).json({ error: 'Error al obtener zona' });
+  }
 });
 
 // Iniciar servidor

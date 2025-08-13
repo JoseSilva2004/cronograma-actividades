@@ -8,35 +8,53 @@ import {
   TextField,
   Select,
   MenuItem,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  FormHelperText
 } from '@mui/material';
 import { createActivity } from './../services/api';
 import { Status, statusLabels, responsables } from './../types/activity';
+import { Zona } from './../services/api';
 
 interface AddActivityDialogProps {
   open: boolean;
   onClose: () => void;
   onActivityAdded: () => void;
+  zonas: Zona[];
 }
 
 export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
   open,
   onClose,
-  onActivityAdded
+  onActivityAdded,
+  zonas 
 }) => {
   const [nombre, setNombre] = useState('');
   const [estado, setEstado] = useState<Status>('pendiente');
   const [responsable, setResponsable] = useState('');
-  const [error, setError] = useState('');
+  const [zonaId, setZonaId] = useState<number | ''>('');
+  const [errors, setErrors] = useState({
+    nombre: false,
+    responsable: false,
+    zona: false,
+    form: ''
+  });
 
   const handleSubmit = async () => {
-    if (!nombre.trim()) {
-      setError('El nombre de la actividad es requerido');
-      return;
-    }
+    // Validación de campos
+    const validationErrors = {
+      nombre: !nombre.trim(),
+      responsable: !responsable,
+      zona: zonaId === ''
+    };
 
-    if (!responsable) {
-      setError('Por favor seleccione un responsable');
+    setErrors({
+      ...validationErrors,
+      form: ''
+    });
+
+    if (Object.values(validationErrors).some(error => error)) {
       return;
     }
 
@@ -44,12 +62,16 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
       await createActivity({ 
         nombre: nombre.trim(), 
         estado, 
-        responsable: responsable === '—' ? '' : responsable 
+        responsable: responsable === '—' ? '' : responsable,
+        zona_id: zonaId as number
       });
       onActivityAdded();
       onClose();
     } catch (err) {
-      setError('Error al crear la actividad');
+      setErrors(prev => ({
+        ...prev,
+        form: 'Error al crear la actividad'
+      }));
       console.error('Error al crear la actividad:', err);
     }
   };
@@ -58,86 +80,114 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
     setNombre('');
     setEstado('pendiente');
     setResponsable('');
-    setError('');
+    setZonaId('');
+    setErrors({
+      nombre: false,
+      responsable: false,
+      zona: false,
+      form: ''
+    });
     onClose();
   };
 
   return (
     <Dialog open={open} onClose={handleClose}>
       <DialogTitle>Añadir Nueva Actividad</DialogTitle>
-      <DialogContent>
-        {error && (
+      <DialogContent sx={{ pt: 2 }}>
+        {errors.form && (
           <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
+            {errors.form}
           </Alert>
         )}
 
         <TextField
           autoFocus
           margin="dense"
-          label="Nombre de la actividad"
+          label="Nombre de la actividad *"
           fullWidth
           value={nombre}
           onChange={(e) => {
             setNombre(e.target.value);
-            setError('');
+            setErrors(prev => ({...prev, nombre: false, form: ''}));
           }}
-          error={!!error && !nombre.trim()}
+          error={errors.nombre}
+          helperText={errors.nombre ? "Este campo es obligatorio" : ""}
           required
         />
 
-        <Select
-          margin="dense"
-          label="Estado"
-          fullWidth
-          value={estado}
-          onChange={(e) => setEstado(e.target.value as Status)}
-          sx={{ mt: 2 }}
-          required
-        >
-          {Object.entries(statusLabels).map(([key, label]) => (
-            <MenuItem key={key} value={key}>
-              {label}
-            </MenuItem>
-          ))}
-        </Select>
+        <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
+          <InputLabel id="estado-label">Estado *</InputLabel>
+          <Select
+            labelId="estado-label"
+            label="Estado *"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value as Status)}
+            required
+          >
+            {Object.entries(statusLabels).map(([key, label]) => (
+              <MenuItem key={key} value={key}>
+                {label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        <Select
-          margin="dense"
-          label="Responsable"
-          fullWidth
-          value={responsable}
-          onChange={(e) => {
-            setResponsable(e.target.value as string);
-            setError('');
-          }}
-          sx={{ mt: 2 }}
-          error={!!error && !responsable}
-          required
-          displayEmpty
-          renderValue={responsable === "" ? () => "Seleccione una persona" : undefined}
-        >
-          {responsables.map((persona) => (
-            <MenuItem 
-              key={persona.value} 
-              value={persona.value}
-              disabled={persona.disabled}
-              sx={{ 
-                fontStyle: persona.disabled ? 'italic' : 'normal',
-                color: persona.disabled ? 'text.secondary' : 'text.primary'
-              }}
-            >
-              {persona.label}
-            </MenuItem>
-          ))}
-        </Select>
+        <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.responsable}>
+          <InputLabel id="responsable-label">Responsable *</InputLabel>
+          <Select
+            labelId="responsable-label"
+            label="Responsable *"
+            value={responsable}
+            onChange={(e) => {
+              setResponsable(e.target.value as string);
+              setErrors(prev => ({...prev, responsable: false, form: ''}));
+            }}
+            required
+          >
+            {responsables.map((persona) => (
+              <MenuItem 
+                key={persona.value} 
+                value={persona.value}
+                disabled={persona.disabled}
+                sx={{ 
+                  fontStyle: persona.disabled ? 'italic' : 'normal',
+                  color: persona.disabled ? 'text.secondary' : 'text.primary'
+                }}
+              >
+                {persona.label}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.responsable && <FormHelperText>Seleccione un responsable</FormHelperText>}
+        </FormControl>
+
+        <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.zona}>
+          <InputLabel id="zona-label">Zona *</InputLabel>
+          <Select
+            labelId="zona-label"
+            label="Zona *"
+            value={zonaId}
+            onChange={(e) => {
+              setZonaId(e.target.value as number);
+              setErrors(prev => ({...prev, zona: false, form: ''}));
+            }}
+            required
+          >
+            {zonas.map((zona) => (
+              <MenuItem key={zona.id} value={zona.id}>
+                {zona.zona} - {zona.subzona} - {zona.tienda} - {zona.empresa}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.zona && <FormHelperText>Seleccione una zona</FormHelperText>}
+        </FormControl>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Cancelar</Button>
         <Button 
           onClick={handleSubmit} 
           color="primary"
-          disabled={!nombre.trim() || !responsable}
+          disabled={!nombre.trim() || !responsable || zonaId === ''}
         >
           Guardar
         </Button>

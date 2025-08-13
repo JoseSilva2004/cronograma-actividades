@@ -9,31 +9,47 @@ import {
   Paper,
   IconButton,
   Box,
-  Button
+  Button,
+  Typography
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { AddActivityDialog } from './../AddActivityDialog';
-import { EditActivityDialog } from './../EditActivityDialog';
-import { ConfirmDialog } from './../ConfirmDialog';
-import { fetchActivities, deleteActivity } from './../../services/api';
-import { Activity, statusLabels } from '../../types/activity';
+import { AddActivityDialog } from '../AddActivityDialog';
+import { EditActivityDialog } from '../EditActivityDialog';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { fetchActivities, deleteActivity, fetchZonas, Zona } from '../../services/api';
+import { Activity, statusLabels } from './../../types/activity';
 
 export const ActivityList = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [zonas, setZonas] = useState<Zona[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
 
-  const loadActivities = async () => {
-    const data = await fetchActivities();
-    setActivities(data);
+  const loadData = async () => {
+    try {
+      const [activitiesData, zonasData] = await Promise.all([
+        fetchActivities(),
+        fetchZonas()
+      ]);
+      setZonas(zonasData);
+      setActivities(
+        activitiesData.map((activity) => ({
+          ...activity,
+          estado: activity.estado as Activity['estado'],
+          zona: zonasData.find(z => z.id === activity.zona_id) || null,
+        })) as Activity[]
+      );
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
   };
 
   useEffect(() => {
-    loadActivities();
+    loadData();
   }, []);
 
   const handleDeleteClick = (id: number) => {
@@ -43,9 +59,18 @@ export const ActivityList = () => {
 
   const handleConfirmDelete = async () => {
     if (activityToDelete) {
-      await deleteActivity(activityToDelete);
-      await loadActivities();
+      try {
+        await deleteActivity(activityToDelete);
+        await loadData();
+      } catch (error) {
+        console.error('Error deleting activity:', error);
+      }
     }
+    setConfirmDialogOpen(false);
+    setActivityToDelete(null);
+  };
+
+  const handleCancelDelete = () => {
     setConfirmDialogOpen(false);
     setActivityToDelete(null);
   };
@@ -61,14 +86,13 @@ export const ActivityList = () => {
     return new Date(dateString).toLocaleDateString('es-ES', options);
   };
 
-    const handleCancelDelete = () => {
-        setConfirmDialogOpen(false);
-        setActivityToDelete(null);
-    };
-
   return (
     <>
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Typography variant="h6" sx={{ flexGrow: 1 }} textAlign={'center'}>
+          Lista de Actividades
+        </Typography>
+        <Box sx={{ flexGrow: 5 }} />
         <Button
           variant="contained"
           color="primary"
@@ -82,12 +106,16 @@ export const ActivityList = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>#</TableCell>
-              <TableCell>Actividad</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Responsable</TableCell>
-              <TableCell>Fecha Creación</TableCell> {/* Nueva columna */}
-              <TableCell>Acciones</TableCell>
+              <TableCell sx={{ width: 50 }}>#</TableCell>
+              <TableCell sx={{ minWidth: 180 }}>Actividad</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Responsable</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Zona</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Subzona</TableCell>
+              <TableCell sx={{ minWidth: 120 }}>Tienda</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Empresa</TableCell>
+              <TableCell sx={{ minWidth: 180 }}>Asignado</TableCell>
+              <TableCell sx={{ width: 120 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -97,6 +125,10 @@ export const ActivityList = () => {
                 <TableCell>{activity.nombre}</TableCell>
                 <TableCell>{statusLabels[activity.estado]}</TableCell>
                 <TableCell>{activity.responsable || '—'}</TableCell>
+                <TableCell>{activity.zona?.zona || '—'}</TableCell>
+                <TableCell>{activity.zona?.subzona || '—'}</TableCell>
+                <TableCell>{activity.zona?.tienda || '—'}</TableCell>
+                <TableCell>{activity.zona?.empresa || '—'}</TableCell>
                 <TableCell>
                   {activity.created_at ? formatDate(activity.created_at) : '—'}
                 </TableCell>
@@ -119,19 +151,20 @@ export const ActivityList = () => {
         </Table>
       </TableContainer>
 
-      {/* Diálogos (se mantienen igual) */}
       <AddActivityDialog
         open={addDialogOpen}
         onClose={() => setAddDialogOpen(false)}
-        onActivityAdded={loadActivities}
+        onActivityAdded={loadData}
+        zonas={zonas}
       />
 
       {currentActivity && (
         <EditActivityDialog
           open={editDialogOpen}
           onClose={() => setEditDialogOpen(false)}
-          onActivityUpdated={loadActivities}
+          onActivityUpdated={loadData}
           activity={currentActivity}
+          zonas={zonas}
         />
       )}
 

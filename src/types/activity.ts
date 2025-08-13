@@ -1,11 +1,21 @@
 export type Status = 'pendiente' | 'en_progreso' | 'programado' | 'en_ejecucion' | 'completado';
 
+export interface Zona {
+  id: number;
+  zona: string;
+  subzona: string;
+  tienda: string;
+  empresa: string;
+}
+
 export interface Activity {
   id: number;
   nombre: string;
   estado: Status;
   responsable: string;
-  created_at?: string;
+  created_at: string;
+  zona_id: number | null;
+  zona?: Zona; // Datos completos de la zona (para JOINs)
 }
 
 export const statusLabels: Record<Status, string> = {
@@ -16,14 +26,6 @@ export const statusLabels: Record<Status, string> = {
   'completado': '✅ Completado'
 };
 
-export const statusOptions: Status[] = [
-  'pendiente',
-  'en_progreso',
-  'programado',
-  'en_ejecucion',
-  'completado'
-];
-
 // Nueva lista de responsables predefinidos
 export const responsables = [
   { value: '', label: 'Seleccione una persona', disabled: true}, // Nueva opción por defecto
@@ -33,5 +35,5 @@ export const responsables = [
   { value: 'Oscar', label: 'Oscar' },
   { value: 'Edgar', label: 'Edgar' },
   { value: 'Edulmin', label: 'Edulmin' },
-  { value: '', label: '—' } // Opción para no asignar
+  { value: '-', label: '—' } // Opción para no asignar
 ];
