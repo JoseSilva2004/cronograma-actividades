@@ -111,9 +111,9 @@ export const ActivityList = () => {
               <TableCell sx={{ minWidth: 120 }}>Estado</TableCell>
               <TableCell sx={{ minWidth: 150 }}>Responsable</TableCell>
               <TableCell sx={{ minWidth: 120 }}>Zona</TableCell>
-              <TableCell sx={{ minWidth: 150 }}>Subzona</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Sub-zona</TableCell>
               <TableCell sx={{ minWidth: 120 }}>Tienda</TableCell>
-              <TableCell sx={{ minWidth: 150 }}>Empresa</TableCell>
+              <TableCell sx={{ minWidth: 150 }}>Razón Social</TableCell>
               <TableCell sx={{ minWidth: 180 }}>Asignado</TableCell>
               <TableCell sx={{ width: 120 }}>Acciones</TableCell>
             </TableRow>
