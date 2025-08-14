@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(cors());
@@ -18,21 +20,25 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Crear tabla si no existe
+// Configuración JWT
+const JWT_SECRET = process.env.JWT_SECRET || '12345';
+const JWT_EXPIRES_IN = '8h';
+
+// Inicialización de la base de datos
 async function initializeDatabase() {
-  // Crear tabla zonas si no existe
+  // Crear tabla zonas
   const createZonasTableQuery = `
     CREATE TABLE IF NOT EXISTS zonas (
       id INT AUTO_INCREMENT PRIMARY KEY,
       zona VARCHAR(255) NOT NULL COMMENT 'Nombre de la zona principal',
-      subzona VARCHAR(255) NOT NULL COMMENT 'Subdivisión de la zona',
-      tienda VARCHAR(255) NOT NULL COMMENT 'Nombre de la tienda',
-      empresa VARCHAR(255) NOT NULL COMMENT 'Empresa asociada',
+      subzona VARCHAR(255) COMMENT 'Subdivisión de la zona',
+      tienda VARCHAR(255) COMMENT 'Nombre de la tienda',
+      empresa VARCHAR(255) COMMENT 'Empresa asociada',
       UNIQUE KEY uk_zona_completa (zona, subzona, tienda, empresa)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `;
 
-  // Crear tabla actividades si no existe (con relación a zonas)
+  // Crear tabla actividades
   const createActividadesTableQuery = `
     CREATE TABLE IF NOT EXISTS actividades (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,22 +51,35 @@ async function initializeDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `;
 
+  // Crear tabla usuarios
+  const createUsersTableQuery = `
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      nombre VARCHAR(255) NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      rol ENUM('admin', 'user', 'guest') NOT NULL DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `;
+
   try {
-    // Ejecutar las consultas en orden
     await pool.query(createZonasTableQuery);
     await pool.query(createActividadesTableQuery);
+    await pool.query(createUsersTableQuery);
     
-    console.log('Tablas creadas/existen correctamente');
+    console.log('Tablas creadas correctamente');
     
-    // Opcional: Insertar datos iniciales si es necesario
+    // Insertar datos iniciales
     await insertInitialZonasData();
+    await insertInitialUser();
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
-    throw error; // Propaga el error para manejo superior
+    throw error;
   }
 }
 
-// Función para datos iniciales
+// Datos iniciales de zonas
 async function insertInitialZonasData() {
   const checkDataQuery = `SELECT COUNT(*) as count FROM zonas`;
   const [rows] = await pool.query(checkDataQuery);
@@ -202,25 +221,136 @@ async function insertInitialZonasData() {
     
     try {
       await pool.query(insertQuery, [values]);
-      console.log(`${values.length} registros de zonas insertados correctamente`);
+      console.log(`${values.length} registros de zonas insertados`);
     } catch (error) {
-      console.error('Error al insertar datos iniciales:', error);
+      console.error('Error al insertar zonas:', error);
       throw error;
     }
   }
 }
-// Endpoints
 
-// Endpoint para crear una nueva actividad con zona
+// Usuario admin inicial
+async function insertInitialUser() {
+  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'admin@example.com'`;
+  const [rows] = await pool.query(checkUserQuery);
+  
+  if (rows[0].count === 0) {
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+    
+    await pool.query(insertQuery, [
+      'admin@example.com',
+      'Administrador',
+      hashedPassword,
+      'admin'
+    ]);
+    console.log('Usuario admin creado: admin@example.com / admin123');
+  }
+}
+
+// Middleware de autenticación
+async function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    req.user = { rol: 'guest' };
+    return next();
+  }
+
+  try {
+    const user = jwt.verify(token, JWT_SECRET);
+    const [users] = await pool.query('SELECT id, email, nombre, rol FROM usuarios WHERE id = ?', [user.id]);
+    
+    if (users.length === 0) {
+      return res.status(403).json({ error: 'Usuario no encontrado' });
+    }
+    
+    req.user = users[0];
+    next();
+  } catch (error) {
+    console.error('Error de autenticación:', error);
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+}
+
+//Enpoints
+// Endpoint de login
+
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  try {
+    const [users] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+    if (users.length === 0) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    
+    const user = users[0];
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+    
+    const token = jwt.sign(
+      { id: user.id, email: user.email, rol: user.rol },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        rol: user.rol
+      }
+    });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+// Endpoint para obtener perfil
+app.get('/api/me', authenticateToken, (req, res) => {
+  res.json(req.user);
+});
+
+// Protección de endpoints
+app.use('/api/actividades', authenticateToken);
+app.use('/api/zonas', authenticateToken);
+
+// Endpoints de actividades (protegidos)
+app.get('/api/actividades', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      FROM actividades a
+      LEFT JOIN zonas z ON a.zona_id = z.id
+      ORDER BY a.created_at DESC
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener actividades:', error);
+    res.status(500).json({ error: 'Error al obtener actividades' });
+  }
+});
+
 app.post('/api/actividades', async (req, res) => {
+  if (req.user.rol === 'guest') {
+    return res.status(403).json({ error: 'Acceso no autorizado' });
+  }
+  
   const { nombre, estado, responsable, zona_id } = req.body;
   
   try {
-    // Verificar si la zona existe si se proporciona
     if (zona_id) {
       const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
       if (zona.length === 0) {
-        return res.status(400).json({ error: 'La zona especificada no existe' });
+        return res.status(400).json({ error: 'Zona no existe' });
       }
     }
 
@@ -229,7 +359,6 @@ app.post('/api/actividades', async (req, res) => {
       [nombre, estado, responsable, zona_id || null]
     );
     
-    // Obtener la actividad recién creada con los datos de la zona
     const [newActivity] = await pool.query(`
       SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
       FROM actividades a
@@ -244,8 +373,51 @@ app.post('/api/actividades', async (req, res) => {
   }
 });
 
+// Endpoint para actualizar una actividad
+app.put('/api/actividades/:id', async (req, res) => {
+  if (req.user.rol === 'guest') {
+    return res.status(403).json({ error: 'Acceso no autorizado para actualizar' });
+  }
+
+  const { id } = req.params;
+  const { nombre, estado, responsable, zona_id } = req.body;
+
+  try {
+    // Verificar si la actividad existe
+    const [actividad] = await pool.query('SELECT id FROM actividades WHERE id = ?', [id]);
+    if (actividad.length === 0) {
+      return res.status(404).json({ error: 'Actividad no encontrada' });
+    }
+
+    // Verificar si la zona_id es válida (si se proporciona)
+    if (zona_id) {
+      const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
+      if (zona.length === 0) {
+        return res.status(400).json({ error: 'La zona proporcionada no existe' });
+      }
+    }
+
+    await pool.query(
+      'UPDATE actividades SET nombre = ?, estado = ?, responsable = ?, zona_id = ? WHERE id = ?',
+      [nombre, estado, responsable, zona_id || null, id]
+    );
+
+    const [updatedActivity] = await pool.query('SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa FROM actividades a LEFT JOIN zonas z ON a.zona_id = z.id WHERE a.id = ?', [id]);
+
+     res.status(200).json(updatedActivity[0]);
+  } catch (error) {
+    console.error(`Error al actualizar actividad con id ${id}:`, error);
+    res.status(500).json({ error: 'Error en el servidor al actualizar la actividad' });
+  }
+});
+
 // Endpoint para eliminar una actividad
 app.delete('/api/actividades/:id', async (req, res) => {
+  // Verificar permisos - solo admin puede eliminar
+  if (req.user.rol !== 'admin') {
+    return res.status(403).json({ error: 'Solo administradores pueden eliminar actividades' });
+  }
+
   const { id } = req.params;
   
   try {
@@ -258,66 +430,23 @@ app.delete('/api/actividades/:id', async (req, res) => {
     // Eliminar la actividad
     await pool.query('DELETE FROM actividades WHERE id = ?', [id]);
     
-    res.status(204).send(); // 204 No Content es estándar para DELETE exitoso
+    // Respuesta exitosa sin contenido (204 No Content)
+    res.status(204).send();
   } catch (error) {
     console.error('Error al eliminar actividad:', error);
+    
+    // Manejar errores específicos de FK u otros
+    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
+      return res.status(400).json({ 
+        error: 'No se puede eliminar la actividad porque está siendo referenciada por otros registros'
+      });
+    }
+    
     res.status(500).json({ error: 'Error al eliminar actividad' });
   }
 });
 
-// Endpoint para obtener todas las actividades con información de zona
-app.get('/api/actividades', async (req, res) => {
-  try {
-    const [rows] = await pool.query(`
-      SELECT 
-        a.id, a.nombre, a.estado, a.responsable, a.created_at,
-        z.id as zona_id, z.zona, z.subzona, z.tienda, z.empresa
-      FROM actividades a
-      LEFT JOIN zonas z ON a.zona_id = z.id
-      ORDER BY a.created_at DESC
-    `);
-    res.json(rows);
-  } catch (error) {
-    console.error('Error al obtener actividades:', error);
-    res.status(500).json({ error: 'Error al obtener actividades' });
-  }
-});
-
-// Endpoint para actualizar una actividad (incluyendo zona)
-app.put('/api/actividades/:id', async (req, res) => {
-  const { id } = req.params;
-  const { nombre, estado, responsable, zona_id } = req.body;
-  
-  try {
-    // Verificar si la zona existe si se proporciona
-    if (zona_id) {
-      const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
-      if (zona.length === 0) {
-        return res.status(400).json({ error: 'La zona especificada no existe' });
-      }
-    }
-
-    await pool.query(
-      'UPDATE actividades SET nombre = ?, estado = ?, responsable = ?, zona_id = ? WHERE id = ?',
-      [nombre, estado, responsable, zona_id || null, id]
-    );
-    
-    // Obtener la actividad actualizada con los datos de la zona
-    const [updatedActivity] = await pool.query(`
-      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
-      FROM actividades a
-      LEFT JOIN zonas z ON a.zona_id = z.id
-      WHERE a.id = ?
-    `, [id]);
-    
-    res.status(200).json(updatedActivity[0]);
-  } catch (error) {
-    console.error('Error al actualizar actividad:', error);
-    res.status(500).json({ error: 'Error al actualizar actividad' });
-  }
-});
-
-// Nuevos endpoints para zonas
+// Endpoints de zonas (protegidos)
 app.get('/api/zonas', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM zonas ORDER BY zona, subzona');
@@ -328,35 +457,33 @@ app.get('/api/zonas', async (req, res) => {
   }
 });
 
-app.post('/api/zonas', async (req, res) => {
-  const { zona, subzona, tienda, empresa } = req.body;
-  
-  try {
-    const [result] = await pool.query(
-      'INSERT INTO zonas (zona, subzona, tienda, empresa) VALUES (?, ?, ?, ?)',
-      [zona, subzona, tienda, empresa]
-    );
-    
-    const [newZona] = await pool.query('SELECT * FROM zonas WHERE id = ?', [result.insertId]);
-    res.status(201).json(newZona[0]);
-  } catch (error) {
-    console.error('Error al crear zona:', error);
-    res.status(500).json({ error: 'Error al crear zona' });
-  }
-});
+// Endpoint para registrar usuario invitado
+app.post('/api/register-guest', async (req, res) => {
+  const { nombre, email, password } = req.body;
 
-app.get('/api/zonas/:id', async (req, res) => {
-  const { id } = req.params;
-  
   try {
-    const [rows] = await pool.query('SELECT * FROM zonas WHERE id = ?', [id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Zona no encontrada' });
+    // Verificar si el email ya existe
+    const [existingUser] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    if (existingUser.length > 0) {
+      return res.status(400).json({ error: 'El email ya está registrado' });
     }
-    res.json(rows[0]);
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insertar usuario con rol 'guest'
+    const [result] = await pool.query(
+      'INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, "guest")',
+      [email, nombre, hashedPassword]
+    );
+
+    res.status(201).json({ 
+      message: 'Usuario invitado registrado exitosamente',
+      id: result.insertId 
+    });
   } catch (error) {
-    console.error('Error al obtener zona:', error);
-    res.status(500).json({ error: 'Error al obtener zona' });
+    console.error('Error al registrar usuario invitado:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 

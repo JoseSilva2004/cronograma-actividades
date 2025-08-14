@@ -34,6 +34,6 @@ export const responsables = [
   { value: 'Jesus', label: 'Jesus' },
   { value: 'Oscar', label: 'Oscar' },
   { value: 'Edgar', label: 'Edgar' },
-  { value: 'Edulmin', label: 'Edulmin' },
-  { value: '-', label: '—' } // Opción para no asignar
+  { value: 'Edurmin', label: 'Edurmin' },
+  { value: 'Sin asignar', label: 'Sin asignar' } // Opción para no asignar
 ];

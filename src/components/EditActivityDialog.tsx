@@ -32,9 +32,9 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   activity,
   zonas
 }) => {
-  const [nombre, setNombre] = useState(activity.nombre);
-  const [estado, setEstado] = useState<Status>(activity.estado);
-  const [responsable, setResponsable] = useState(activity.responsable);
+  const [nombre, setNombre] = useState('');
+  const [estado, setEstado] = useState<Status>('pendiente');
+  const [responsable, setResponsable] = useState('');
   const [errors, setErrors] = useState({
     nombre: false,
     responsable: false,
@@ -54,18 +54,31 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   const [tiendasFiltradas, setTiendasFiltradas] = useState<string[]>([]);
   const [empresasFiltradas, setEmpresasFiltradas] = useState<string[]>([]);
 
-  // Inicializar valores basados en la actividad existente
+  // Efecto para inicializar y resetear el estado del formulario cuando se abre el diálogo
   useEffect(() => {
-    if (open && activity.zona_id && zonas.length > 0) {
-      const zonaCompleta = zonas.find(z => z.id === activity.zona_id);
-      if (zonaCompleta) {
-        setZonaSeleccionada(zonaCompleta.zona);
-        setSubzonaSeleccionada(zonaCompleta.subzona);
-        setTiendaSeleccionada(zonaCompleta.tienda);
-        setEmpresaSeleccionada(zonaCompleta.empresa);
+    if (open) {
+      setNombre(activity.nombre);
+      setEstado(activity.estado);
+      setResponsable(activity.responsable || '');
+      setErrors({ nombre: false, responsable: false, zona: false, form: '' });
+
+      if (activity.zona_id && zonas.length > 0) {
+        const zonaCompleta = zonas.find(z => z.id === activity.zona_id);
+        if (zonaCompleta) {
+          setZonaSeleccionada(zonaCompleta.zona);
+          setSubzonaSeleccionada(zonaCompleta.subzona);
+          setTiendaSeleccionada(zonaCompleta.tienda);
+          setEmpresaSeleccionada(zonaCompleta.empresa);
+          return; // Salir si se encontró la zona
+        }
       }
+      // Si no se encontró la zona o no hay zona_id, resetear los campos de zona
+      setZonaSeleccionada('');
+      setSubzonaSeleccionada('');
+      setTiendaSeleccionada('');
+      setEmpresaSeleccionada('');
     }
-  }, [open, activity.zona_id, zonas]);
+  }, [open, activity, zonas]);
 
   // Efecto para cargar las opciones únicas al inicio
   useEffect(() => {
@@ -148,28 +161,18 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
       await onActivityUpdated();
       onClose();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al actualizar la actividad';
       setErrors(prev => ({
         ...prev,
-        form: 'Error al actualizar la actividad'
+        form: errorMessage
       }));
       console.error('Error al actualizar la actividad:', err);
     }
   };
 
   const handleClose = () => {
-    setNombre(activity.nombre);
-    setEstado(activity.estado);
-    setResponsable(activity.responsable);
-    setZonaSeleccionada('');
-    setSubzonaSeleccionada('');
-    setTiendaSeleccionada('');
-    setEmpresaSeleccionada('');
-    setErrors({
-      nombre: false,
-      responsable: false,
-      zona: false,
-      form: ''
-    });
+    // La lógica de reseteo ahora está en el useEffect,
+    // así que solo necesitamos llamar a onClose.
     onClose();
   };
 

@@ -1,3 +1,4 @@
+// ActivityList.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -19,6 +20,7 @@ import { EditActivityDialog } from '../EditActivityDialog';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { fetchActivities, deleteActivity, fetchZonas, Zona } from '../../services/api';
 import { Activity, statusLabels } from './../../types/activity';
+import { getCurrentUser } from '../../services/api';
 
 export const ActivityList = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -28,6 +30,9 @@ export const ActivityList = () => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
+
+  const user = getCurrentUser();
+  const isGuest = user.rol === 'guest';
 
   const loadData = async () => {
     try {
@@ -88,18 +93,19 @@ export const ActivityList = () => {
 
   return (
     <>
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6" sx={{ flexGrow: 1 }} textAlign={'center'}>
           Lista de Actividades
         </Typography>
-        <Box sx={{ flexGrow: 5 }} />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setAddDialogOpen(true)}
-        >
-          Añadir Actividad
-        </Button>
+        {!isGuest && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setAddDialogOpen(true)}
+          >
+            Añadir Actividad
+          </Button>
+        )}
       </Box>
 
       <TableContainer component={Paper}>
@@ -115,7 +121,7 @@ export const ActivityList = () => {
               <TableCell sx={{ minWidth: 120 }}>Tienda</TableCell>
               <TableCell sx={{ minWidth: 150 }}>Razón Social</TableCell>
               <TableCell sx={{ minWidth: 180 }}>Asignado</TableCell>
-              <TableCell sx={{ width: 120 }}>Acciones</TableCell>
+              {!isGuest && <TableCell sx={{ width: 120 }}>Acciones</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -132,49 +138,57 @@ export const ActivityList = () => {
                 <TableCell>
                   {activity.created_at ? formatDate(activity.created_at) : '—'}
                 </TableCell>
-                <TableCell>
-                  <IconButton
-                    onClick={() => {
-                      setCurrentActivity(activity);
-                      setEditDialogOpen(true);
-                    }}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handleDeleteClick(activity.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
+                {!isGuest && (
+                  <TableCell>
+                    <IconButton
+                      onClick={() => {
+                        setCurrentActivity(activity);
+                        setEditDialogOpen(true);
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    {user.rol === 'admin' && (
+                      <IconButton onClick={() => handleDeleteClick(activity.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      <AddActivityDialog
-        open={addDialogOpen}
-        onClose={() => setAddDialogOpen(false)}
-        onActivityAdded={loadData}
-        zonas={zonas}
-      />
+      {!isGuest && (
+        <>
+          <AddActivityDialog
+            open={addDialogOpen}
+            onClose={() => setAddDialogOpen(false)}
+            onActivityAdded={loadData}
+            zonas={zonas}
+          />
 
-      {currentActivity && (
-        <EditActivityDialog
-          open={editDialogOpen}
-          onClose={() => setEditDialogOpen(false)}
-          onActivityUpdated={loadData}
-          activity={currentActivity}
-          zonas={zonas}
-        />
+          {currentActivity && (
+            <EditActivityDialog
+              open={editDialogOpen}
+              onClose={() => setEditDialogOpen(false)}
+              onActivityUpdated={loadData}
+              activity={currentActivity}
+              zonas={zonas}
+            />
+          )}
+
+          <ConfirmDialog
+            open={confirmDialogOpen}
+            title="Confirmar eliminación"
+            message="¿Estás seguro que deseas eliminar esta actividad?"
+            onConfirm={handleConfirmDelete}
+            onCancel={handleCancelDelete}
+          />
+        </>
       )}
-
-      <ConfirmDialog
-        open={confirmDialogOpen}
-        title="Confirmar eliminación"
-        message="¿Estás seguro que deseas eliminar esta actividad?"
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
     </>
   );
 };

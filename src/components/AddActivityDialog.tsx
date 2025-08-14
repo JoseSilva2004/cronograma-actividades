@@ -137,9 +137,10 @@ useEffect(() => {
       onActivityAdded();
       onClose();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear la actividad';
       setErrors(prev => ({
         ...prev,
-        form: 'Error al crear la actividad'
+        form: errorMessage
       }));
       console.error('Error al crear la actividad:', err);
     }
