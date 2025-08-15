@@ -27,16 +27,16 @@ const JWT_EXPIRES_IN = '8h';
 // Inicialización de la base de datos
 async function initializeDatabase() {
   // Crear tabla zonas
-  const createZonasTableQuery = `
-    CREATE TABLE IF NOT EXISTS zonas (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      zona VARCHAR(255) NOT NULL COMMENT 'Nombre de la zona principal',
-      subzona VARCHAR(255) COMMENT 'Subdivisión de la zona',
-      tienda VARCHAR(255) COMMENT 'Nombre de la tienda',
-      empresa VARCHAR(255) COMMENT 'Empresa asociada',
-      UNIQUE KEY uk_zona_completa (zona, subzona, tienda, empresa)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `;
+ const createZonasTableQuery = `
+  CREATE TABLE IF NOT EXISTS zonas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    zona VARCHAR(255) NOT NULL COMMENT 'Nombre de la zona principal',
+    subzona VARCHAR(255) COMMENT 'Subdivisión de la zona',
+    tienda VARCHAR(255) COMMENT 'Nombre de la tienda',
+    empresa VARCHAR(255) COMMENT 'Empresa asociada',
+    UNIQUE KEY uk_zona_completa (zona, subzona, tienda, empresa)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+`;
 
   // Crear tabla actividades
   const createActividadesTableQuery = `
@@ -72,7 +72,8 @@ async function initializeDatabase() {
     
     // Insertar datos iniciales
     await insertInitialZonasData();
-    await insertInitialUser();
+    await insertInitialAdminUser();
+    await insertInitialInvitadoUser();
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
     throw error;
@@ -230,23 +231,43 @@ async function insertInitialZonasData() {
 }
 
 // Usuario admin inicial
-async function insertInitialUser() {
+async function insertInitialAdminUser() {
   const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'admin@example.com'`;
   const [rows] = await pool.query(checkUserQuery);
   
   if (rows[0].count === 0) {
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const hashedPassword = await bcrypt.hash('Ax2012123', 10);
     const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
     
     await pool.query(insertQuery, [
-      'admin@example.com',
+      'admin@soporte.com',
       'Administrador',
       hashedPassword,
       'admin'
     ]);
-    console.log('Usuario admin creado: admin@example.com / admin123');
+    console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
   }
 }
+
+// Usuario invitado inicial
+async function insertInitialInvitadoUser() {
+  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'invitado@soporte.com'`;
+  const [rows] = await pool.query(checkUserQuery);
+  
+  if (rows[0].count === 0) {
+    const hashedPassword = await bcrypt.hash('invitado123', 10);
+    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+    
+    await pool.query(insertQuery, [
+      'invitado@soporte.com',
+      'Invitado',
+      hashedPassword,
+      'guest'
+    ]);
+    console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+  }
+}
+
 
 // Middleware de autenticación
 async function authenticateToken(req, res, next) {

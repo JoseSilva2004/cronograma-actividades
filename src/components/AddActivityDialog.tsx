@@ -176,8 +176,11 @@ useEffect(() => {
         <TextField
           autoFocus
           margin="dense"
-          label="Nombre de la actividad *"
+          label="Descripción de la actividad *"
           fullWidth
+          multiline
+          rows={4}
+          variant="outlined"
           value={nombre}
           onChange={(e) => {
             setNombre(e.target.value);
@@ -185,9 +188,18 @@ useEffect(() => {
           }}
           error={errors.nombre}
           helperText={errors.nombre ? "Este campo es obligatorio" : ""}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              fontSize: '1.1rem',
+              minHeight: '120px',
+              alignItems: 'flex-start' // Alinea el texto arriba
+            },
+            mt: 2,
+            mb: 2
+          }}
           required
         />
-
+        
         <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
           <InputLabel id="estado-label">Estado *</InputLabel>
           <Select
