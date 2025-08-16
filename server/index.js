@@ -30,10 +30,10 @@ async function initializeDatabase() {
  const createZonasTableQuery = `
   CREATE TABLE IF NOT EXISTS zonas (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    zona VARCHAR(255) NOT NULL COMMENT 'Nombre de la zona principal',
-    subzona VARCHAR(255) COMMENT 'Subdivisión de la zona',
-    tienda VARCHAR(255) COMMENT 'Nombre de la tienda',
-    empresa VARCHAR(255) COMMENT 'Empresa asociada',
+    zona VARCHAR(100) NOT NULL COMMENT 'Nombre de la zona principal',
+    subzona VARCHAR(100) COMMENT 'Subdivisión de la zona',
+    tienda VARCHAR(100) COMMENT 'Nombre de la tienda',
+    empresa VARCHAR(100) COMMENT 'Empresa asociada',
     UNIQUE KEY uk_zona_completa (zona, subzona, tienda, empresa)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
 `;
@@ -55,8 +55,8 @@ async function initializeDatabase() {
   const createUsersTableQuery = `
     CREATE TABLE IF NOT EXISTS usuarios (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      nombre VARCHAR(255) NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      nombre VARCHAR(100) NOT NULL,
       password VARCHAR(255) NOT NULL,
       rol ENUM('admin', 'user', 'guest') NOT NULL DEFAULT 'user',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

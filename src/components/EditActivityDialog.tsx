@@ -1,4 +1,3 @@
-// EditActivityDialog.tsx
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -49,48 +48,58 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   const [subzonaSeleccionada, setSubzonaSeleccionada] = useState<string>('');
   const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string>('');
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('');
-  const [zonaOriginal, setZonaOriginal] = useState<string>('');
 
   const [zonasUnicas, setZonasUnicas] = useState<string[]>([]);
   const [subzonasFiltradas, setSubzonasFiltradas] = useState<string[]>([]);
   const [tiendasFiltradas, setTiendasFiltradas] = useState<string[]>([]);
   const [empresasFiltradas, setEmpresasFiltradas] = useState<string[]>([]);
 
-  // Inicializar valores al abrir el diálogo
+  // Cargar datos iniciales cada vez que cambian open, activity o zonas
   useEffect(() => {
-    if (!open) return;
+    if (!open || zonas.length === 0) return;
+
+    const zonaCompleta = activity.zona_id
+      ? zonas.find(z => z.id === activity.zona_id)
+      : null;
 
     setNombre(activity.nombre);
     setEstado(activity.estado);
     setResponsable(activity.responsable || '');
-    setErrors({
-      nombre: false,
-      responsable: false,
-      zona: false,
-      subzona: false,
-      tienda: false,
-      empresa: false,
-      form: ''
-    });
 
-    if (activity.zona_id && zonas.length > 0) {
-      const zonaCompleta = zonas.find(z => z.id === activity.zona_id);
-      if (zonaCompleta) {
-        setZonaOriginal(zonaCompleta.zona || '');
-        setZonaSeleccionada(zonaCompleta.zona || '');
-        setSubzonaSeleccionada(zonaCompleta.subzona || '');
-        setTiendaSeleccionada(zonaCompleta.tienda || '');
-        setEmpresaSeleccionada(zonaCompleta.empresa || '');
-      } else {
-        // Si no encontramos la zona por id, limpiar
-        setZonaOriginal('');
-        setZonaSeleccionada('');
-        setSubzonaSeleccionada('');
-        setTiendaSeleccionada('');
-        setEmpresaSeleccionada('');
-      }
+    if (zonaCompleta) {
+      setZonaSeleccionada(zonaCompleta.zona || '');
+      setSubzonaSeleccionada(zonaCompleta.subzona || '');
+      setTiendaSeleccionada(zonaCompleta.tienda || '');
+      setEmpresaSeleccionada(zonaCompleta.empresa || '');
+
+      const subzonas = Array.from(new Set(
+        zonas
+          .filter(z => z.zona === zonaCompleta.zona)
+          .map(z => z.subzona || '')
+          .filter(Boolean)
+      ));
+      setSubzonasFiltradas(subzonas);
+
+      const tiendas = Array.from(new Set(
+        zonas
+          .filter(z => z.zona === zonaCompleta.zona && z.subzona === zonaCompleta.subzona)
+          .map(z => z.tienda || '')
+          .filter(Boolean)
+      ));
+      setTiendasFiltradas(tiendas);
+
+      const empresas = Array.from(new Set(
+        zonas
+          .filter(z =>
+            z.zona === zonaCompleta.zona &&
+            z.subzona === zonaCompleta.subzona &&
+            z.tienda === zonaCompleta.tienda
+          )
+          .map(z => z.empresa || '')
+          .filter(Boolean)
+      ));
+      setEmpresasFiltradas(empresas);
     } else {
-      setZonaOriginal('');
       setZonaSeleccionada('');
       setSubzonaSeleccionada('');
       setTiendaSeleccionada('');
@@ -103,108 +112,69 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
     if (zonas.length > 0) {
       const zUnicas = Array.from(new Set(zonas.map(z => z.zona)));
       setZonasUnicas(zUnicas);
-    } else {
-      setZonasUnicas([]);
     }
   }, [zonas]);
 
-  // Subzonas según zona
+  // Actualizar subzonas cuando cambia la zona seleccionada
   useEffect(() => {
     if (zonaSeleccionada) {
-      const subzonas = zonas
-        .filter(z => z.zona === zonaSeleccionada)
-        .map(z => z.subzona || '')
-        .filter(Boolean);
-      const únicas = Array.from(new Set(subzonas));
-      setSubzonasFiltradas(únicas);
+      const subzonas = Array.from(new Set(
+        zonas
+          .filter(z => z.zona === zonaSeleccionada)
+          .map(z => z.subzona || '')
+          .filter(Boolean)
+      ));
+      setSubzonasFiltradas(subzonas);
 
-      // Si la subzona actual no pertenece a la nueva zona, limpiar descendientes
-      if (subzonaSeleccionada && !únicas.includes(subzonaSeleccionada)) {
+      if (!subzonas.includes(subzonaSeleccionada)) {
         setSubzonaSeleccionada('');
-        setTiendaSeleccionada('');
-        setEmpresaSeleccionada('');
-        setEmpresasFiltradas([]);
-        setTiendasFiltradas([]);
       }
     } else {
       setSubzonasFiltradas([]);
-      if (subzonaSeleccionada) setSubzonaSeleccionada('');
-      if (tiendaSeleccionada) setTiendaSeleccionada('');
-      if (empresaSeleccionada) setEmpresaSeleccionada('');
-      setTiendasFiltradas([]);
-      setEmpresasFiltradas([]);
+      setSubzonaSeleccionada('');
     }
-    // incluir dependencias usadas dentro del efecto
-  }, [zonaSeleccionada, zonas, subzonaSeleccionada, tiendaSeleccionada, empresaSeleccionada]);
+  }, [zonaSeleccionada, zonas, subzonaSeleccionada]);
 
-  // Tiendas según zona + subzona
+  // Actualizar tiendas cuando cambia subzona
   useEffect(() => {
     if (zonaSeleccionada && subzonaSeleccionada) {
-      const tiendas = zonas
-        .filter(z => z.zona === zonaSeleccionada && z.subzona === subzonaSeleccionada)
-        .map(z => z.tienda || '')
-        .filter(Boolean);
+      const tiendas = Array.from(new Set(
+        zonas
+          .filter(z => z.zona === zonaSeleccionada && z.subzona === subzonaSeleccionada)
+          .map(z => z.tienda || '')
+          .filter(Boolean)
+      ));
+      setTiendasFiltradas(tiendas);
 
-      const únicas = Array.from(new Set(tiendas));
-      setTiendasFiltradas(únicas);
-
-      // Limpiar tienda/empresa solo si la tienda seleccionada YA no es válida
-      if (tiendaSeleccionada && !únicas.includes(tiendaSeleccionada)) {
+      if (!tiendas.includes(tiendaSeleccionada)) {
         setTiendaSeleccionada('');
-        setEmpresaSeleccionada('');
-        setEmpresasFiltradas([]);
       }
     } else {
       setTiendasFiltradas([]);
-      if (tiendaSeleccionada) setTiendaSeleccionada('');
-      if (empresaSeleccionada) setEmpresaSeleccionada('');
-      setEmpresasFiltradas([]);
+      setTiendaSeleccionada('');
     }
-  }, [zonaSeleccionada, subzonaSeleccionada, zonas, tiendaSeleccionada, empresaSeleccionada]);
+  }, [subzonaSeleccionada, zonaSeleccionada, zonas, tiendaSeleccionada]);
 
-  // Empresas según zona + subzona + tienda
+  // Actualizar empresas cuando cambia tienda
   useEffect(() => {
     if (zonaSeleccionada && subzonaSeleccionada && tiendaSeleccionada) {
-      const empresas = zonas
-        .filter(
-          z =>
+      const empresas = Array.from(new Set(
+        zonas
+          .filter(z =>
             z.zona === zonaSeleccionada &&
             z.subzona === subzonaSeleccionada &&
             z.tienda === tiendaSeleccionada
-        )
-        .map(z => z.empresa || '')
-        .filter(Boolean);
-      const únicas = Array.from(new Set(empresas));
-      setEmpresasFiltradas(únicas);
+          )
+          .map(z => z.empresa || '')
+          .filter(Boolean)
+      ));
+      setEmpresasFiltradas(empresas);
 
-      if (empresaSeleccionada && !únicas.includes(empresaSeleccionada)) {
+      if (!empresas.includes(empresaSeleccionada)) {
         setEmpresaSeleccionada('');
       }
     } else {
       setEmpresasFiltradas([]);
-      if (empresaSeleccionada) setEmpresaSeleccionada('');
-    }
-  }, [zonaSeleccionada, subzonaSeleccionada, tiendaSeleccionada, zonas, empresaSeleccionada]);
-
-  // FIX: actualizar empresa/otros datos si cambian los datos de `zonas`
-  useEffect(() => {
-    if (!tiendaSeleccionada) return;
-
-    const tiendaData = zonas.find(
-      z =>
-        z.zona === zonaSeleccionada &&
-        z.subzona === subzonaSeleccionada &&
-        z.tienda === tiendaSeleccionada
-    );
-
-    if (tiendaData) {
-      // solo setear si hay cambio real para evitar renders extra
-      if (empresaSeleccionada !== (tiendaData.empresa || '')) {
-        setEmpresaSeleccionada(tiendaData.empresa || '');
-      }
-    } else {
-      // si la tienda ya no existe en las zonas actuales, limpiamos
-      setTiendaSeleccionada('');
       setEmpresaSeleccionada('');
     }
   }, [tiendaSeleccionada, zonaSeleccionada, subzonaSeleccionada, zonas, empresaSeleccionada]);
@@ -214,29 +184,21 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
       nombre: !nombre.trim(),
       responsable: !responsable,
       zona: !zonaSeleccionada,
-      subzona: zonaSeleccionada !== zonaOriginal ? !subzonaSeleccionada : false,
-      tienda: zonaSeleccionada !== zonaOriginal ? !tiendaSeleccionada : false,
-      empresa: zonaSeleccionada !== zonaOriginal ? !empresaSeleccionada : false
+      subzona: subzonasFiltradas.length > 0 ? !subzonaSeleccionada : false,
+      tienda: tiendasFiltradas.length > 0 ? !tiendaSeleccionada : false,
+      empresa: empresasFiltradas.length > 0 ? !empresaSeleccionada : false
     };
 
     setErrors({ ...validationErrors, form: '' });
     if (Object.values(validationErrors).some(Boolean)) return;
 
     try {
-      // Determinar la zona a usar (si no cambió, usar la original por id; si cambió, buscar coincidencia exacta)
-      let zonaCompleta: Zona | undefined;
-
-      if (zonaSeleccionada === zonaOriginal) {
-        zonaCompleta = zonas.find(z => z.id === activity.zona_id);
-      } else {
-        zonaCompleta = zonas.find(
-          z =>
-            z.zona === zonaSeleccionada &&
-            z.subzona === subzonaSeleccionada &&
-            z.tienda === tiendaSeleccionada &&
-            z.empresa === empresaSeleccionada
-        );
-      }
+      const zonaCompleta = zonas.find(z =>
+        z.zona === zonaSeleccionada &&
+        (subzonasFiltradas.length === 0 || z.subzona === subzonaSeleccionada) &&
+        (tiendasFiltradas.length === 0 || z.tienda === tiendaSeleccionada) &&
+        (empresasFiltradas.length === 0 || z.empresa === empresaSeleccionada)
+      );
 
       if (!zonaCompleta) {
         setErrors(prev => ({
@@ -249,7 +211,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
       await updateActivity(activity.id, {
         nombre: nombre.trim(),
         estado,
-        responsable: responsable === '—' ? '' : responsable, // siempre string
+        responsable: responsable === '—' ? '' : responsable,
         zona_id: zonaCompleta.id
       });
 
@@ -357,20 +319,15 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
           {errors.zona && <FormHelperText>Seleccione una zona</FormHelperText>}
         </FormControl>
 
-        {zonaSeleccionada && (
-          <FormControl
-            fullWidth
-            margin="dense"
-            sx={{ mt: 2 }}
-            error={errors.subzona && zonaSeleccionada !== zonaOriginal}
-          >
-            <InputLabel id="subzona-label">Subzona {zonaSeleccionada !== zonaOriginal ? '*' : ''}</InputLabel>
+        {zonaSeleccionada && subzonasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.subzona}>
+            <InputLabel id="subzona-label">Subzona *</InputLabel>
             <Select
               labelId="subzona-label"
-              label={`Subzona ${zonaSeleccionada !== zonaOriginal ? '*' : ''}`}
+              label="Subzona *"
               value={subzonaSeleccionada}
               onChange={(e) => setSubzonaSeleccionada(e.target.value as string)}
-              required={zonaSeleccionada !== zonaOriginal}
+              required={subzonasFiltradas.length > 0}
             >
               <MenuItem value="" disabled>Seleccione una subzona</MenuItem>
               {subzonasFiltradas.map((subzona) => (
@@ -379,26 +336,19 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
                 </MenuItem>
               ))}
             </Select>
-            {errors.subzona && zonaSeleccionada !== zonaOriginal && (
-              <FormHelperText>Seleccione una subzona</FormHelperText>
-            )}
+            {errors.subzona && <FormHelperText>Seleccione una subzona</FormHelperText>}
           </FormControl>
         )}
 
-        {subzonaSeleccionada && (
-          <FormControl
-            fullWidth
-            margin="dense"
-            sx={{ mt: 2 }}
-            error={errors.tienda && zonaSeleccionada !== zonaOriginal}
-          >
-            <InputLabel id="tienda-label">Tienda {zonaSeleccionada !== zonaOriginal ? '*' : ''}</InputLabel>
+        {subzonaSeleccionada && tiendasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.tienda}>
+            <InputLabel id="tienda-label">Tienda *</InputLabel>
             <Select
               labelId="tienda-label"
-              label={`Tienda ${zonaSeleccionada !== zonaOriginal ? '*' : ''}`}
+              label="Tienda *"
               value={tiendaSeleccionada}
               onChange={(e) => setTiendaSeleccionada(e.target.value as string)}
-              required={zonaSeleccionada !== zonaOriginal}
+              required={tiendasFiltradas.length > 0}
             >
               <MenuItem value="" disabled>Seleccione una tienda</MenuItem>
               {tiendasFiltradas.map((tienda) => (
@@ -407,26 +357,19 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
                 </MenuItem>
               ))}
             </Select>
-            {errors.tienda && zonaSeleccionada !== zonaOriginal && (
-              <FormHelperText>Seleccione una tienda</FormHelperText>
-            )}
+            {errors.tienda && <FormHelperText>Seleccione una tienda</FormHelperText>}
           </FormControl>
         )}
 
-        {tiendaSeleccionada && (
-          <FormControl
-            fullWidth
-            margin="dense"
-            sx={{ mt: 2 }}
-            error={errors.empresa && zonaSeleccionada !== zonaOriginal}
-          >
-            <InputLabel id="empresa-label">Empresa {zonaSeleccionada !== zonaOriginal ? '*' : ''}</InputLabel>
+        {tiendaSeleccionada && empresasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.empresa}>
+            <InputLabel id="empresa-label">Empresa *</InputLabel>
             <Select
               labelId="empresa-label"
-              label={`Empresa ${zonaSeleccionada !== zonaOriginal ? '*' : ''}`}
+              label="Empresa *"
               value={empresaSeleccionada}
               onChange={(e) => setEmpresaSeleccionada(e.target.value as string)}
-              required={zonaSeleccionada !== zonaOriginal}
+              required={empresasFiltradas.length > 0}
             >
               <MenuItem value="" disabled>Seleccione una empresa</MenuItem>
               {empresasFiltradas.map((empresa) => (
@@ -435,9 +378,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
                 </MenuItem>
               ))}
             </Select>
-            {errors.empresa && zonaSeleccionada !== zonaOriginal && (
-              <FormHelperText>Seleccione una empresa</FormHelperText>
-            )}
+            {errors.empresa && <FormHelperText>Seleccione una empresa</FormHelperText>}
           </FormControl>
         )}
       </DialogContent>
@@ -451,8 +392,9 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
             !nombre.trim() ||
             !responsable ||
             !zonaSeleccionada ||
-            (zonaSeleccionada !== zonaOriginal &&
-              (!subzonaSeleccionada || !tiendaSeleccionada || !empresaSeleccionada))
+            (subzonasFiltradas.length > 0 && !subzonaSeleccionada) ||
+            (tiendasFiltradas.length > 0 && !tiendaSeleccionada) ||
+            (empresasFiltradas.length > 0 && !empresaSeleccionada)
           }
         >
           Guardar
