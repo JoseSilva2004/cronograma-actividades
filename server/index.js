@@ -198,7 +198,7 @@ async function insertInitialZonasData() {
       ["BB VLP 2024, C.A.", "SHOE BOX", "Traki", "Guarico"],
       ["AA VLP 2022, C.A.", "MR PRICE", "Traki", "Guarico"],
       ["CC GUACARA 2025, C.A.", "MR PRICE", "Hiper Galerias Traki", "Guacara"],
-      ["BB GUACARA 2025, C.A.", "SHOE BOX", "Hiper Galerías Traki", "Guacara"],
+      ["BB GUACARA 2025, C.A.", "SHOE BOX", "Hiper Galerias Traki", "Guacara"],
       ["BB SCI 2023, C.A.", "SHOE BOX", "Sambil", "San Cristobal"],
       ["AA SCI 2023, C.A.", "MR PRICE", "Sambil", "San Cristobal"],
       ["CC SCI 2022, C.A.", "ILAHUI", "Sambil", "San Cristobal"],
@@ -232,43 +232,57 @@ async function insertInitialZonasData() {
 
 // Usuario admin inicial
 async function insertInitialAdminUser() {
-  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'admin@example.com'`;
-  const [rows] = await pool.query(checkUserQuery);
-  
-  if (rows[0].count === 0) {
-    const hashedPassword = await bcrypt.hash('Ax2012123', 10);
-    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+   try {
+    // Verificar si el usuario admin ya existe
+    const checkUserQuery = `SELECT id FROM usuarios WHERE email = ? LIMIT 1`;
+    const [users] = await pool.query(checkUserQuery, ['admin@soporte.com']);
     
-    await pool.query(insertQuery, [
-      'admin@soporte.com',
-      'Administrador',
-      hashedPassword,
-      'admin'
-    ]);
-    console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
+    if (users.length === 0) {
+      // Solo insertar si no existe
+      const hashedPassword = await bcrypt.hash('Ax2012123', 10);
+      const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+      
+      await pool.query(insertQuery, [
+        'admin@soporte.com',
+        'Administrador',
+        hashedPassword,
+        'admin'
+      ]);
+      console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
+    } else {
+      console.log('Usuario admin ya existe en la base de datos');
+    }
+  } catch (error) {
+    console.error('Error al verificar/insertar usuario admin:', error);
+    throw error;
   }
 }
 
 // Usuario invitado inicial
 async function insertInitialInvitadoUser() {
-  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'invitado@soporte.com'`;
-  const [rows] = await pool.query(checkUserQuery);
-  
-  if (rows[0].count === 0) {
-    const hashedPassword = await bcrypt.hash('invitado123', 10);
-    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+  try {
+    const checkUserQuery = `SELECT id FROM usuarios WHERE email = ? LIMIT 1`;
+    const [users] = await pool.query(checkUserQuery, ['invitado@soporte.com']);
     
-    await pool.query(insertQuery, [
-      'invitado@soporte.com',
-      'Invitado',
-      hashedPassword,
-      'guest'
-    ]);
-    console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+    if (users.length === 0) {
+      const hashedPassword = await bcrypt.hash('invitado123', 10);
+      const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+      
+      await pool.query(insertQuery, [
+        'invitado@soporte.com',
+        'Invitado',
+        hashedPassword,
+        'guest'
+      ]);
+      console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+    } else {
+      console.log('Usuario invitado ya existe en la base de datos');
+    }
+  } catch (error) {
+    console.error('Error al verificar/insertar usuario invitado:', error);
+    throw error;
   }
 }
-
-
 // Middleware de autenticación
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];

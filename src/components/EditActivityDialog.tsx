@@ -54,158 +54,143 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   const [tiendasFiltradas, setTiendasFiltradas] = useState<string[]>([]);
   const [empresasFiltradas, setEmpresasFiltradas] = useState<string[]>([]);
 
-  // Cargar datos iniciales cada vez que cambian open, activity o zonas
+  // Inicializar valores al abrir el diálogo
   useEffect(() => {
-    if (!open || zonas.length === 0) return;
-
-    const zonaCompleta = activity.zona_id
-      ? zonas.find(z => z.id === activity.zona_id)
-      : null;
+    if (!open) return;
 
     setNombre(activity.nombre);
     setEstado(activity.estado);
     setResponsable(activity.responsable || '');
+    setErrors({
+      nombre: false,
+      responsable: false,
+      zona: false,
+      subzona: false,
+      tienda: false,
+      empresa: false,
+      form: ''
+    });
 
-    if (zonaCompleta) {
-      setZonaSeleccionada(zonaCompleta.zona || '');
-      setSubzonaSeleccionada(zonaCompleta.subzona || '');
-      setTiendaSeleccionada(zonaCompleta.tienda || '');
-      setEmpresaSeleccionada(zonaCompleta.empresa || '');
+    const cargarDatosIniciales = () => {
+      if (activity.zona_id && zonas.length > 0) {
+        const zonaCompleta = zonas.find(z => z.id === activity.zona_id);
+        if (zonaCompleta) {
+          setZonaSeleccionada(zonaCompleta.zona || '');
+          setSubzonaSeleccionada(zonaCompleta.subzona || '');
+          setTiendaSeleccionada(zonaCompleta.tienda || '');
+          setEmpresaSeleccionada(zonaCompleta.empresa || '');
 
-      const subzonas = Array.from(new Set(
-        zonas
-          .filter(z => z.zona === zonaCompleta.zona)
-          .map(z => z.subzona || '')
-          .filter(Boolean)
-      ));
-      setSubzonasFiltradas(subzonas);
+          // Subzonas disponibles
+          const subzonas = Array.from(new Set(
+            zonas.filter(z => (z.zona || '') === (zonaCompleta.zona || ''))
+                 .map(z => z.subzona || '')
+                 .filter(Boolean)
+          ));
+          setSubzonasFiltradas(subzonas);
 
-      const tiendas = Array.from(new Set(
-        zonas
-          .filter(z => z.zona === zonaCompleta.zona && z.subzona === zonaCompleta.subzona)
-          .map(z => z.tienda || '')
-          .filter(Boolean)
-      ));
-      setTiendasFiltradas(tiendas);
+          // Tiendas disponibles
+          const tiendas = Array.from(new Set(
+            zonas.filter(z => (z.zona || '') === (zonaCompleta.zona || '') && 
+                              (z.subzona || '') === (zonaCompleta.subzona || ''))
+                 .map(z => z.tienda || '')
+                 .filter(Boolean)
+          ));
+          setTiendasFiltradas(tiendas);
 
-      const empresas = Array.from(new Set(
-        zonas
-          .filter(z =>
-            z.zona === zonaCompleta.zona &&
-            z.subzona === zonaCompleta.subzona &&
-            z.tienda === zonaCompleta.tienda
-          )
-          .map(z => z.empresa || '')
-          .filter(Boolean)
-      ));
-      setEmpresasFiltradas(empresas);
-    } else {
-      setZonaSeleccionada('');
-      setSubzonaSeleccionada('');
-      setTiendaSeleccionada('');
-      setEmpresaSeleccionada('');
-    }
+          // Empresas disponibles
+          const empresas = Array.from(new Set(
+            zonas.filter(z => (z.zona || '') === (zonaCompleta.zona || '') && 
+                              (z.subzona || '') === (zonaCompleta.subzona || '') && 
+                              (z.tienda || '') === (zonaCompleta.tienda || ''))
+                 .map(z => z.empresa || '')
+                 .filter(Boolean)
+          ));
+          setEmpresasFiltradas(empresas);
+        }
+      }
+    };
+
+    cargarDatosIniciales();
   }, [open, activity, zonas]);
 
   // Zonas únicas
   useEffect(() => {
     if (zonas.length > 0) {
-      const zUnicas = Array.from(new Set(zonas.map(z => z.zona)));
-      setZonasUnicas(zUnicas);
+      const zonasUnicas = Array.from(new Set(
+        zonas.map(z => z.zona || '').filter(Boolean)
+      ));
+      setZonasUnicas(zonasUnicas);
     }
   }, [zonas]);
 
-  // Actualizar subzonas cuando cambia la zona seleccionada
+  // Subzonas según zona seleccionada
   useEffect(() => {
     if (zonaSeleccionada) {
-      const subzonas = Array.from(new Set(
-        zonas
-          .filter(z => z.zona === zonaSeleccionada)
-          .map(z => z.subzona || '')
-          .filter(Boolean)
-      ));
-      setSubzonasFiltradas(subzonas);
-
-      if (!subzonas.includes(subzonaSeleccionada)) {
-        setSubzonaSeleccionada('');
-      }
+      const subzonas = zonas
+        .filter(z => (z.zona || '') === zonaSeleccionada)
+        .map(z => z.subzona || '')
+        .filter(Boolean);
+      setSubzonasFiltradas(Array.from(new Set(subzonas)));
     } else {
       setSubzonasFiltradas([]);
-      setSubzonaSeleccionada('');
     }
-  }, [zonaSeleccionada, zonas, subzonaSeleccionada]);
+  }, [zonaSeleccionada, zonas]);
 
-  // Actualizar tiendas cuando cambia subzona
+  // Tiendas según zona y subzona
   useEffect(() => {
     if (zonaSeleccionada && subzonaSeleccionada) {
-      const tiendas = Array.from(new Set(
-        zonas
-          .filter(z => z.zona === zonaSeleccionada && z.subzona === subzonaSeleccionada)
-          .map(z => z.tienda || '')
-          .filter(Boolean)
-      ));
-      setTiendasFiltradas(tiendas);
-
-      if (!tiendas.includes(tiendaSeleccionada)) {
-        setTiendaSeleccionada('');
-      }
+      const tiendas = zonas
+        .filter(z => (z.zona || '') === zonaSeleccionada && 
+                     (z.subzona || '') === subzonaSeleccionada)
+        .map(z => z.tienda || '')
+        .filter(Boolean);
+      setTiendasFiltradas(Array.from(new Set(tiendas)));
     } else {
       setTiendasFiltradas([]);
-      setTiendaSeleccionada('');
     }
-  }, [subzonaSeleccionada, zonaSeleccionada, zonas, tiendaSeleccionada]);
+  }, [zonaSeleccionada, subzonaSeleccionada, zonas]);
 
-  // Actualizar empresas cuando cambia tienda
+  // Empresas según zona, subzona y tienda
   useEffect(() => {
     if (zonaSeleccionada && subzonaSeleccionada && tiendaSeleccionada) {
-      const empresas = Array.from(new Set(
-        zonas
-          .filter(z =>
-            z.zona === zonaSeleccionada &&
-            z.subzona === subzonaSeleccionada &&
-            z.tienda === tiendaSeleccionada
-          )
-          .map(z => z.empresa || '')
-          .filter(Boolean)
-      ));
-      setEmpresasFiltradas(empresas);
-
-      if (!empresas.includes(empresaSeleccionada)) {
-        setEmpresaSeleccionada('');
-      }
+      const empresas = zonas
+        .filter(z => 
+          (z.zona || '') === zonaSeleccionada && 
+          (z.subzona || '') === subzonaSeleccionada && 
+          (z.tienda || '') === tiendaSeleccionada
+        )
+        .map(z => z.empresa || '')
+        .filter(Boolean);
+      setEmpresasFiltradas(Array.from(new Set(empresas)));
     } else {
       setEmpresasFiltradas([]);
-      setEmpresaSeleccionada('');
     }
-  }, [tiendaSeleccionada, zonaSeleccionada, subzonaSeleccionada, zonas, empresaSeleccionada]);
+  }, [zonaSeleccionada, subzonaSeleccionada, tiendaSeleccionada, zonas]);
 
   const handleSubmit = async () => {
     const validationErrors = {
       nombre: !nombre.trim(),
       responsable: !responsable,
       zona: !zonaSeleccionada,
-      subzona: subzonasFiltradas.length > 0 ? !subzonaSeleccionada : false,
-      tienda: tiendasFiltradas.length > 0 ? !tiendaSeleccionada : false,
-      empresa: empresasFiltradas.length > 0 ? !empresaSeleccionada : false
+      subzona: !subzonaSeleccionada,
+      tienda: !tiendaSeleccionada,
+      empresa: !empresaSeleccionada,
+      form: ''
     };
 
-    setErrors({ ...validationErrors, form: '' });
+    setErrors(validationErrors);
     if (Object.values(validationErrors).some(Boolean)) return;
 
     try {
-      const zonaCompleta = zonas.find(z =>
-        z.zona === zonaSeleccionada &&
-        (subzonasFiltradas.length === 0 || z.subzona === subzonaSeleccionada) &&
-        (tiendasFiltradas.length === 0 || z.tienda === tiendaSeleccionada) &&
-        (empresasFiltradas.length === 0 || z.empresa === empresaSeleccionada)
+      const zonaCompleta = zonas.find(z => 
+        (z.zona || '') === (zonaSeleccionada || '') &&
+        (z.subzona || '') === (subzonaSeleccionada || '') &&
+        (z.tienda || '') === (tiendaSeleccionada || '') &&
+        (z.empresa || '') === (empresaSeleccionada || '')
       );
 
       if (!zonaCompleta) {
-        setErrors(prev => ({
-          ...prev,
-          form: 'No se encontró la ubicación seleccionada. Verifica Zona/Subzona/Tienda/Empresa.'
-        }));
-        return;
+        throw new Error('No se encontró la combinación completa de ubicación en la base de datos');
       }
 
       await updateActivity(activity.id, {
@@ -227,6 +212,17 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
 
   const handleClose = () => {
     onClose();
+  };
+
+  const isFormValid = () => {
+    return (
+      nombre.trim() !== '' && 
+      responsable !== '' && 
+      zonaSeleccionada !== '' && 
+      subzonaSeleccionada !== '' && 
+      tiendaSeleccionada !== '' && 
+      empresaSeleccionada !== ''
+    );
   };
 
   return (
@@ -319,7 +315,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
           {errors.zona && <FormHelperText>Seleccione una zona</FormHelperText>}
         </FormControl>
 
-        {zonaSeleccionada && subzonasFiltradas.length > 0 && (
+        {zonaSeleccionada && (
           <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.subzona}>
             <InputLabel id="subzona-label">Subzona *</InputLabel>
             <Select
@@ -327,7 +323,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
               label="Subzona *"
               value={subzonaSeleccionada}
               onChange={(e) => setSubzonaSeleccionada(e.target.value as string)}
-              required={subzonasFiltradas.length > 0}
+              required
             >
               <MenuItem value="" disabled>Seleccione una subzona</MenuItem>
               {subzonasFiltradas.map((subzona) => (
@@ -340,7 +336,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
           </FormControl>
         )}
 
-        {subzonaSeleccionada && tiendasFiltradas.length > 0 && (
+        {subzonaSeleccionada && (
           <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.tienda}>
             <InputLabel id="tienda-label">Tienda *</InputLabel>
             <Select
@@ -348,7 +344,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
               label="Tienda *"
               value={tiendaSeleccionada}
               onChange={(e) => setTiendaSeleccionada(e.target.value as string)}
-              required={tiendasFiltradas.length > 0}
+              required
             >
               <MenuItem value="" disabled>Seleccione una tienda</MenuItem>
               {tiendasFiltradas.map((tienda) => (
@@ -361,7 +357,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
           </FormControl>
         )}
 
-        {tiendaSeleccionada && empresasFiltradas.length > 0 && (
+        {tiendaSeleccionada && (
           <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.empresa}>
             <InputLabel id="empresa-label">Empresa *</InputLabel>
             <Select
@@ -369,7 +365,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
               label="Empresa *"
               value={empresaSeleccionada}
               onChange={(e) => setEmpresaSeleccionada(e.target.value as string)}
-              required={empresasFiltradas.length > 0}
+              required
             >
               <MenuItem value="" disabled>Seleccione una empresa</MenuItem>
               {empresasFiltradas.map((empresa) => (
@@ -388,14 +384,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
         <Button
           onClick={handleSubmit}
           color="primary"
-          disabled={
-            !nombre.trim() ||
-            !responsable ||
-            !zonaSeleccionada ||
-            (subzonasFiltradas.length > 0 && !subzonaSeleccionada) ||
-            (tiendasFiltradas.length > 0 && !tiendaSeleccionada) ||
-            (empresasFiltradas.length > 0 && !empresaSeleccionada)
-          }
+          disabled={!isFormValid()}
         >
           Guardar
         </Button>
