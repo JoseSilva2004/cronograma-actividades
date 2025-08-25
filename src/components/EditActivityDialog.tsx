@@ -179,6 +179,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
     onClose();
   };
 
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Editar Actividad</DialogTitle>

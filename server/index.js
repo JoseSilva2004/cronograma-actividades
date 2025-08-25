@@ -198,7 +198,7 @@ async function insertInitialZonasData() {
       ["BB VLP 2024, C.A.", "SHOE BOX", "Traki", "Guarico"],
       ["AA VLP 2022, C.A.", "MR PRICE", "Traki", "Guarico"],
       ["CC GUACARA 2025, C.A.", "MR PRICE", "Hiper Galerias Traki", "Guacara"],
-      ["BB GUACARA 2025, C.A.", "SHOE BOX", "Hiper Galerías Traki", "Guacara"],
+      ["BB GUACARA 2025, C.A.", "SHOE BOX", "Hiper Galerias Traki", "Guacara"],
       ["BB SCI 2023, C.A.", "SHOE BOX", "Sambil", "San Cristobal"],
       ["AA SCI 2023, C.A.", "MR PRICE", "Sambil", "San Cristobal"],
       ["CC SCI 2022, C.A.", "ILAHUI", "Sambil", "San Cristobal"],
