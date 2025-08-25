@@ -18,6 +18,17 @@ export interface Activity {
   zona?: Zona; // Datos completos de la zona (para JOINs)
 }
 
+export interface CreateActivityInput {
+  nombre: string;
+  estado: Status;
+  responsable: string;
+  zona_id?: number | null;
+  subzona?: string;
+  tienda?: string;
+  empresa?: string;
+}
+
+
 export const statusLabels: Record<Status, string> = {
   'pendiente': '📋 Pendiente',
   'en_progreso': '⏳ En progreso',
@@ -28,12 +39,12 @@ export const statusLabels: Record<Status, string> = {
 
 // Nueva lista de responsables predefinidos
 export const responsables = [
-  { value: '', label: 'Seleccione una persona', disabled: true}, // Nueva opción por defecto
+  { value: '', label: 'Seleccione una persona', disabled: true}, 
   { value: 'Jeisson', label: 'Jeisson' },
   { value: 'Luis', label: 'Luis' },
   { value: 'Jesus', label: 'Jesus' },
   { value: 'Oscar', label: 'Oscar' },
   { value: 'Edgar', label: 'Edgar' },
-  { value: 'Edurmis', label: 'Edurmin' },
+  { value: 'Edurmis', label: 'Edurmis' },
   { value: 'Sin asignar', label: 'Sin asignar' } // Opción para no asignar
 ];

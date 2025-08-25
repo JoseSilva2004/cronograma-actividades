@@ -1,4 +1,3 @@
-// ActivityList.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -21,6 +20,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { fetchActivities, deleteActivity, fetchZonas, Zona } from '../../services/api';
 import { Activity, statusLabels } from './../../types/activity';
 import { getCurrentUser } from '../../services/api';
+import { formatNullableValue } from '../../utils/helpers';
 
 export const ActivityList = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -130,11 +130,11 @@ export const ActivityList = () => {
                 <TableCell>{activity.id}</TableCell>
                 <TableCell>{activity.nombre}</TableCell>
                 <TableCell>{statusLabels[activity.estado]}</TableCell>
-                <TableCell>{activity.responsable || '—'}</TableCell>
-                <TableCell>{activity.zona?.zona || '—'}</TableCell>
-                <TableCell>{activity.zona?.subzona || '—'}</TableCell>
-                <TableCell>{activity.zona?.tienda || '—'}</TableCell>
-                <TableCell>{activity.zona?.empresa || '—'}</TableCell>
+                <TableCell>{formatNullableValue(activity.responsable)}</TableCell>
+                <TableCell>{formatNullableValue(activity.zona?.zona)}</TableCell>
+                <TableCell>{formatNullableValue(activity.zona?.subzona)}</TableCell>
+                <TableCell>{formatNullableValue(activity.zona?.tienda)}</TableCell>
+                <TableCell>{formatNullableValue(activity.zona?.empresa)}</TableCell>
                 <TableCell>
                   {activity.created_at ? formatDate(activity.created_at) : '—'}
                 </TableCell>

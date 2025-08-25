@@ -13,9 +13,17 @@ import {
   InputLabel,
   FormHelperText
 } from '@mui/material';
-import { createActivity } from './../services/api';
-import { Status, statusLabels, responsables } from './../types/activity';
-import { Zona } from './../services/api';
+import { createActivity } from '../services/api';
+import { Status, statusLabels, responsables } from '../types/activity';
+import { Zona } from '../services/api';
+import { isNullOrEmpty } from '../utils/helpers';
+
+interface FormErrors {
+  nombre: boolean;
+  responsable: boolean;
+  zona: boolean;
+  form: string;
+}
 
 interface AddActivityDialogProps {
   open: boolean;
@@ -33,116 +41,130 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
   const [nombre, setNombre] = useState('');
   const [estado, setEstado] = useState<Status>('pendiente');
   const [responsable, setResponsable] = useState('');
-  const [errors, setErrors] = useState({
+  const [errors, setErrors] = useState<FormErrors>({
     nombre: false,
     responsable: false,
     zona: false,
     form: ''
   });
 
-  // Estados para los filtros
   const [zonaSeleccionada, setZonaSeleccionada] = useState<string>('');
-  const [subzonaSeleccionada, setSubzonaSeleccionada] = useState<string>('');
-  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string>('');
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string>('');
+  const [subzonaSeleccionada, setSubzonaSeleccionada] = useState<string | null>(null);
+  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<string | null>(null);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string | null>(null);
 
-  // Opciones filtradas
   const [zonasUnicas, setZonasUnicas] = useState<string[]>([]);
   const [subzonasFiltradas, setSubzonasFiltradas] = useState<string[]>([]);
   const [tiendasFiltradas, setTiendasFiltradas] = useState<string[]>([]);
   const [empresasFiltradas, setEmpresasFiltradas] = useState<string[]>([]);
 
-  // Efecto para cargar las opciones únicas al inicio
+  // Cargar zonas únicas
   useEffect(() => {
-  if (zonas.length > 0) {
-    // Obtener zonas únicas usando Array.from
-    const zonasUnicas = Array.from(new Set(zonas.map(z => z.zona)));
-    setZonasUnicas(zonasUnicas);
-  }
-}, [zonas]);
+    if (zonas.length > 0) {
+      const zonasUnicas = Array.from(new Set(
+        zonas
+          .map(z => z.zona)
+          .filter(zona => !isNullOrEmpty(zona))
+      ));
+      setZonasUnicas(zonasUnicas);
+    }
+  }, [zonas]);
 
-useEffect(() => {
-  if (zonaSeleccionada) {
-    const subzonas = zonas
-      .filter(z => z.zona === zonaSeleccionada)
-      .map(z => z.subzona);
-    setSubzonasFiltradas(Array.from(new Set(subzonas)));
-    setSubzonaSeleccionada('');
-    setTiendaSeleccionada('');
-    setEmpresaSeleccionada('');
-  }
-}, [zonaSeleccionada, zonas]);
+  // Cargar subzonas cuando se selecciona una zona
+  useEffect(() => {
+    if (zonaSeleccionada) {
+      const subzonas = zonas
+        .filter(z => z.zona === zonaSeleccionada && !isNullOrEmpty(z.subzona))
+        .map(z => z.subzona!)
+        .filter(subzona => !isNullOrEmpty(subzona));
+      setSubzonasFiltradas(Array.from(new Set(subzonas)));
+    } else {
+      setSubzonasFiltradas([]);
+    }
+    setSubzonaSeleccionada(null);
+    setTiendaSeleccionada(null);
+    setEmpresaSeleccionada(null);
+  }, [zonaSeleccionada, zonas]);
 
-useEffect(() => {
-  if (zonaSeleccionada && subzonaSeleccionada) {
-    const tiendas = zonas
-      .filter(z => z.zona === zonaSeleccionada && z.subzona === subzonaSeleccionada)
-      .map(z => z.tienda);
-    setTiendasFiltradas(Array.from(new Set(tiendas)));
-    setTiendaSeleccionada('');
-    setEmpresaSeleccionada('');
-  }
-}, [subzonaSeleccionada, zonaSeleccionada, zonas]);
+  // Cargar tiendas cuando se selecciona una subzona
+  useEffect(() => {
+    if (zonaSeleccionada && subzonaSeleccionada) {
+      const tiendas = zonas
+        .filter(z => z.zona === zonaSeleccionada && z.subzona === subzonaSeleccionada && !isNullOrEmpty(z.tienda))
+        .map(z => z.tienda!)
+        .filter(tienda => !isNullOrEmpty(tienda));
+      setTiendasFiltradas(Array.from(new Set(tiendas)));
+    } else {
+      setTiendasFiltradas([]);
+    }
+    setTiendaSeleccionada(null);
+    setEmpresaSeleccionada(null);
+  }, [subzonaSeleccionada, zonaSeleccionada, zonas]);
 
-useEffect(() => {
-  if (zonaSeleccionada && subzonaSeleccionada && tiendaSeleccionada) {
-    const empresas = zonas
-      .filter(z => 
-        z.zona === zonaSeleccionada && 
-        z.subzona === subzonaSeleccionada && 
-        z.tienda === tiendaSeleccionada
-      )
-      .map(z => z.empresa);
-    setEmpresasFiltradas(Array.from(new Set(empresas)));
-    setEmpresaSeleccionada('');
-  }
-}, [tiendaSeleccionada, subzonaSeleccionada, zonaSeleccionada, zonas]);
+  // Cargar empresas cuando se selecciona una tienda
+  useEffect(() => {
+    if (zonaSeleccionada && subzonaSeleccionada && tiendaSeleccionada) {
+      const empresas = zonas
+        .filter(z => 
+          z.zona === zonaSeleccionada && 
+          z.subzona === subzonaSeleccionada && 
+          z.tienda === tiendaSeleccionada && 
+          !isNullOrEmpty(z.empresa)
+        )
+        .map(z => z.empresa!)
+        .filter(empresa => !isNullOrEmpty(empresa));
+      setEmpresasFiltradas(Array.from(new Set(empresas)));
+    } else {
+      setEmpresasFiltradas([]);
+    }
+    setEmpresaSeleccionada(null);
+  }, [tiendaSeleccionada, subzonaSeleccionada, zonaSeleccionada, zonas]);
 
   const handleSubmit = async () => {
-    // Validación de campos
     const validationErrors = {
       nombre: !nombre.trim(),
       responsable: !responsable,
-      zona: !zonaSeleccionada || !empresaSeleccionada
+      zona: !zonaSeleccionada,
+      form: ''
     };
 
-    setErrors({
-      ...validationErrors,
-      form: ''
-    });
-
-    if (Object.values(validationErrors).some(error => error)) {
+    setErrors(validationErrors);
+    if (validationErrors.nombre || validationErrors.responsable || validationErrors.zona) {
       return;
     }
 
     try {
-      // Encontrar el ID de la zona seleccionada
-      const zonaCompleta = zonas.find(z => 
+      // Buscar zona que coincida exactamente con los criterios
+      const zonasCoincidentes = zonas.filter(z => 
         z.zona === zonaSeleccionada &&
-        z.subzona === subzonaSeleccionada &&
-        z.tienda === tiendaSeleccionada &&
-        z.empresa === empresaSeleccionada
+        (isNullOrEmpty(subzonaSeleccionada) ? isNullOrEmpty(z.subzona) : z.subzona === subzonaSeleccionada) &&
+        (isNullOrEmpty(tiendaSeleccionada) ? isNullOrEmpty(z.tienda) : z.tienda === tiendaSeleccionada) &&
+        (isNullOrEmpty(empresaSeleccionada) ? isNullOrEmpty(z.empresa) : z.empresa === empresaSeleccionada)
       );
 
-      if (!zonaCompleta) {
-        throw new Error('No se encontró la ubicación seleccionada');
+      if (zonasCoincidentes.length === 0) {
+        throw new Error('No se encontró la zona seleccionada con los filtros dados');
       }
+
+      // Preferir la primera coincidencia
+      const zonaCompleta = zonasCoincidentes[0];
 
       await createActivity({ 
         nombre: nombre.trim(), 
         estado, 
-        responsable: responsable === '—' ? '' : responsable,
+        responsable,
         zona_id: zonaCompleta.id
       });
+      
       onActivityAdded();
       onClose();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al crear la actividad';
-      setErrors(prev => ({
-        ...prev,
-        form: errorMessage
-      }));
-      console.error('Error al crear la actividad:', err);
+    } catch (error) {
+      setErrors({
+        nombre: false,
+        responsable: false,
+        zona: false,
+        form: error instanceof Error ? error.message : 'Error al crear actividad'
+      });
     }
   };
 
@@ -151,9 +173,9 @@ useEffect(() => {
     setEstado('pendiente');
     setResponsable('');
     setZonaSeleccionada('');
-    setSubzonaSeleccionada('');
-    setTiendaSeleccionada('');
-    setEmpresaSeleccionada('');
+    setSubzonaSeleccionada(null);
+    setTiendaSeleccionada(null);
+    setEmpresaSeleccionada(null);
     setErrors({
       nombre: false,
       responsable: false,
@@ -188,19 +210,10 @@ useEffect(() => {
           }}
           error={errors.nombre}
           helperText={errors.nombre ? "Este campo es obligatorio" : ""}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              fontSize: '1.1rem',
-              minHeight: '120px',
-              alignItems: 'flex-start' // Alinea el texto arriba
-            },
-            mt: 2,
-            mb: 2
-          }}
           required
         />
         
-        <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
+        <FormControl fullWidth margin="dense">
           <InputLabel id="estado-label">Estado *</InputLabel>
           <Select
             labelId="estado-label"
@@ -217,7 +230,7 @@ useEffect(() => {
           </Select>
         </FormControl>
 
-        <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.responsable}>
+        <FormControl fullWidth margin="dense" error={errors.responsable}>
           <InputLabel id="responsable-label">Responsable *</InputLabel>
           <Select
             labelId="responsable-label"
@@ -234,10 +247,6 @@ useEffect(() => {
                 key={persona.value} 
                 value={persona.value}
                 disabled={persona.disabled}
-                sx={{ 
-                  fontStyle: persona.disabled ? 'italic' : 'normal',
-                  color: persona.disabled ? 'text.secondary' : 'text.primary'
-                }}
               >
                 {persona.label}
               </MenuItem>
@@ -246,8 +255,7 @@ useEffect(() => {
           {errors.responsable && <FormHelperText>Seleccione un responsable</FormHelperText>}
         </FormControl>
 
-        {/* Selector de Zona */}
-        <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.zona}>
+        <FormControl fullWidth margin="dense" error={errors.zona}>
           <InputLabel id="zona-label">Zona *</InputLabel>
           <Select
             labelId="zona-label"
@@ -256,26 +264,26 @@ useEffect(() => {
             onChange={(e) => setZonaSeleccionada(e.target.value as string)}
             required
           >
-            <MenuItem value="" disabled>Seleccione una zona</MenuItem>
+            <MenuItem value="">Seleccione una zona</MenuItem>
             {zonasUnicas.map((zona) => (
               <MenuItem key={zona} value={zona}>
                 {zona}
               </MenuItem>
             ))}
           </Select>
+          {errors.zona && <FormHelperText>Seleccione una zona</FormHelperText>}
         </FormControl>
 
-        {/* Selector de Subzona (solo visible si hay zona seleccionada) */}
-        {zonaSeleccionada && (
-          <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
-            <InputLabel id="subzona-label">Subzona</InputLabel>
+        {zonaSeleccionada && subzonasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="subzona-label">Subzona (opcional)</InputLabel>
             <Select
               labelId="subzona-label"
-              label="Subzona"
-              value={subzonaSeleccionada}
-              onChange={(e) => setSubzonaSeleccionada(e.target.value as string)}
+              label="Subzona (opcional)"
+              value={subzonaSeleccionada ?? ''}
+              onChange={(e) => setSubzonaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="" disabled>Seleccione una subzona</MenuItem>
+              <MenuItem value="">—</MenuItem>
               {subzonasFiltradas.map((subzona) => (
                 <MenuItem key={subzona} value={subzona}>
                   {subzona}
@@ -285,17 +293,16 @@ useEffect(() => {
           </FormControl>
         )}
 
-        {/* Selector de Tienda (solo visible si hay subzona seleccionada) */}
-        {subzonaSeleccionada && (
-          <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
-            <InputLabel id="tienda-label">Tienda</InputLabel>
+        {subzonaSeleccionada && tiendasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="tienda-label">Tienda (opcional)</InputLabel>
             <Select
               labelId="tienda-label"
-              label="Tienda"
-              value={tiendaSeleccionada}
-              onChange={(e) => setTiendaSeleccionada(e.target.value as string)}
+              label="Tienda (opcional)"
+              value={tiendaSeleccionada ?? ''}
+              onChange={(e) => setTiendaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="" disabled>Seleccione una tienda</MenuItem>
+              <MenuItem value="">—</MenuItem>
               {tiendasFiltradas.map((tienda) => (
                 <MenuItem key={tienda} value={tienda}>
                   {tienda}
@@ -305,25 +312,22 @@ useEffect(() => {
           </FormControl>
         )}
 
-        {/* Selector de Empresa (solo visible si hay tienda seleccionada) */}
-        {tiendaSeleccionada && (
-          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.zona}>
-            <InputLabel id="empresa-label">Empresa *</InputLabel>
+        {tiendaSeleccionada && empresasFiltradas.length > 0 && (
+          <FormControl fullWidth margin="dense">
+            <InputLabel id="empresa-label">Empresa (opcional)</InputLabel>
             <Select
               labelId="empresa-label"
-              label="Empresa *"
-              value={empresaSeleccionada}
-              onChange={(e) => setEmpresaSeleccionada(e.target.value as string)}
-              required
+              label="Empresa (opcional)"
+              value={empresaSeleccionada ?? ''}
+              onChange={(e) => setEmpresaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="" disabled>Seleccione una empresa</MenuItem>
+              <MenuItem value="">—</MenuItem>
               {empresasFiltradas.map((empresa) => (
                 <MenuItem key={empresa} value={empresa}>
                   {empresa}
                 </MenuItem>
               ))}
             </Select>
-            {errors.zona && <FormHelperText>Seleccione una empresa</FormHelperText>}
           </FormControl>
         )}
       </DialogContent>
@@ -332,12 +336,7 @@ useEffect(() => {
         <Button 
           onClick={handleSubmit} 
           color="primary"
-          disabled={
-            !nombre.trim() || 
-            !responsable || 
-            !zonaSeleccionada || 
-            !empresaSeleccionada
-          }
+          disabled={!nombre.trim() || !responsable || !zonaSeleccionada}
         >
           Guardar
         </Button>

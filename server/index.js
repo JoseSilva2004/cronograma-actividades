@@ -217,7 +217,23 @@ async function insertInitialZonasData() {
       ["BB LOS CEDROS 2024, C.A", "OHWOW", "Los Cedros", "Margarita"],
       ["AA CCS OUTLET 2025, C.A.", "FOREVER 21", "Sambil Chacao", "Caracas"],
       ["BB CCS OUTLET 2025, C.A.", "SHOE BOX", "Sambil Chacao", "Caracas"],
-      ["CC CUM 2022, C.A.", "MOTARRO", "Hiper Galerias Traki", "Cumana"]
+      ["CC CUM 2022, C.A.", "MOTARRO", "Hiper Galerias Traki", "Cumana"],
+      [null, null, null, "Caracas"],
+      [null, null, null, "Maracaibo"],
+      [null, null, null, "Margarita"],
+      [null, null, null, "Valencia"],
+      [null, null, null, "Barquisimeto"],
+      [null, null, null, "Puerto Ordaz"],
+      [null, null, null, "San Cristobal"],
+      [null, null, null, "Lecheria"],
+      [null, null, null, "Cumana"],
+      [null, null, null, "Maturin"],
+      [null, null, null, "Guarico"],
+      [null, null, null, "Guacara"],
+      [null, null, null, "Apure"],
+      [null, null, null, "Puerto la Cruz"],
+      [null, null, null, "Punto Fijo"],
+      [null, null, null, "Maracay"],
     ];
     
     try {
@@ -232,42 +248,59 @@ async function insertInitialZonasData() {
 
 // Usuario admin inicial
 async function insertInitialAdminUser() {
-  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'admin@example.com'`;
-  const [rows] = await pool.query(checkUserQuery);
-  
-  if (rows[0].count === 0) {
-    const hashedPassword = await bcrypt.hash('Ax2012123', 10);
-    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+  try {
+    // Verificar si el usuario admin ya existe usando el email correcto
+    const checkUserQuery = `SELECT id FROM usuarios WHERE email = ? LIMIT 1`;
+    const [users] = await pool.query(checkUserQuery, ['admin@soporte.com']);
     
-    await pool.query(insertQuery, [
-      'admin@soporte.com',
-      'Administrador',
-      hashedPassword,
-      'admin'
-    ]);
-    console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
+    if (users.length === 0) {
+      // Solo insertar si no existe
+      const hashedPassword = await bcrypt.hash('Ax2012123', 10);
+      const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+      
+      await pool.query(insertQuery, [
+        'admin@soporte.com',
+        'Administrador',
+        hashedPassword,
+        'admin'
+      ]);
+      console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
+    } else {
+      console.log('Usuario admin ya existe en la base de datos');
+    }
+  } catch (error) {
+    console.error('Error al verificar/insertar usuario admin:', error);
+    throw error;
   }
 }
 
 // Usuario invitado inicial
 async function insertInitialInvitadoUser() {
-  const checkUserQuery = `SELECT COUNT(*) as count FROM usuarios WHERE email = 'invitado@soporte.com'`;
-  const [rows] = await pool.query(checkUserQuery);
-  
-  if (rows[0].count === 0) {
-    const hashedPassword = await bcrypt.hash('invitado123', 10);
-    const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+  try {
+    // Verificar si el usuario invitado ya existe
+    const checkUserQuery = `SELECT id FROM usuarios WHERE email = ? LIMIT 1`;
+    const [users] = await pool.query(checkUserQuery, ['invitado@soporte.com']);
     
-    await pool.query(insertQuery, [
-      'invitado@soporte.com',
-      'Invitado',
-      hashedPassword,
-      'guest'
-    ]);
-    console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+    if (users.length === 0) {
+      // Solo insertar si no existe
+      const hashedPassword = await bcrypt.hash('invitado123', 10);
+      const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
+      
+      await pool.query(insertQuery, [
+        'invitado@soporte.com',
+        'Invitado',
+        hashedPassword,
+        'guest'
+      ]);
+      console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+    } else {
+      console.log('Usuario invitado ya existe en la base de datos');
+    }
+  } catch (error) {
+    console.error('Error al verificar/insertar usuario invitado:', error);
+    throw error;
   }
 }
-
 
 // Middleware de autenticación
 async function authenticateToken(req, res, next) {
@@ -348,7 +381,11 @@ app.use('/api/zonas', authenticateToken);
 app.get('/api/actividades', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      SELECT a.*, 
+             COALESCE(z.zona, '-') as zona, 
+             COALESCE(z.subzona, '-') as subzona,
+             COALESCE(z.tienda, '-') as tienda,
+             COALESCE(z.empresa, '-') as empresa
       FROM actividades a
       LEFT JOIN zonas z ON a.zona_id = z.id
       ORDER BY a.created_at DESC
@@ -360,6 +397,7 @@ app.get('/api/actividades', async (req, res) => {
   }
 });
 
+// En el endpoint POST /api/actividades
 app.post('/api/actividades', async (req, res) => {
   if (req.user.rol === 'guest') {
     return res.status(403).json({ error: 'Acceso no autorizado' });
@@ -368,6 +406,7 @@ app.post('/api/actividades', async (req, res) => {
   const { nombre, estado, responsable, zona_id } = req.body;
   
   try {
+    // Solo validar zona_id si se proporciona
     if (zona_id) {
       const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
       if (zona.length === 0) {
@@ -377,11 +416,15 @@ app.post('/api/actividades', async (req, res) => {
 
     const [result] = await pool.query(
       'INSERT INTO actividades (nombre, estado, responsable, zona_id) VALUES (?, ?, ?, ?)',
-      [nombre, estado, responsable, zona_id || null]
+      [nombre, estado, responsable || null, zona_id || null]
     );
     
     const [newActivity] = await pool.query(`
-      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      SELECT a.*, 
+             COALESCE(z.zona, '-') as zona,
+             COALESCE(z.subzona, '-') as subzona,
+             COALESCE(z.tienda, '-') as tienda,
+             COALESCE(z.empresa, '-') as empresa
       FROM actividades a
       LEFT JOIN zonas z ON a.zona_id = z.id
       WHERE a.id = ?

@@ -116,6 +116,9 @@ export const createActivity = async (activity: {
   estado: string;
   responsable: string;
   zona_id?: number | null;
+  subzona?: string |null ;
+  tienda?: string | null;
+  empresa?: string | null;
 }): Promise<Activity> => {
   const response = await authFetch(`${API_URL}/actividades`, {
     method: 'POST',
