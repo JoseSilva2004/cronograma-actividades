@@ -6,13 +6,14 @@ import {
   TextField, 
   Button, 
   Typography, 
-  Paper, 
-  Alert,
+  Card,
+  CardContent,
   Container,
   CssBaseline,
-  Avatar
+  Alert
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { Logo } from './Logo';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -30,7 +31,6 @@ export const Login = () => {
     
     try {
       await login(email, password);
-      // Redirige a la página previa o a activities por defecto
       const from = location.state?.from?.pathname || '/activities';
       navigate(from, { replace: true });
     } catch (err) {
@@ -41,60 +41,72 @@ export const Login = () => {
   };
 
   return (
-    <Container component="main" maxWidth="xs">
+    <Container component="main" maxWidth="sm">
       <CssBaseline />
       <Box
         sx={{
-          marginTop: 8,
+          marginTop: 4,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          minHeight: '80vh'
         }}
       >
-        <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-          <LockOutlinedIcon />
-        </Avatar>
-        <Typography component="h1" variant="h5">
-          Iniciar Sesión
-        </Typography>
-        <Paper elevation={3} sx={{ p: 4, mt: 3, width: '100%' }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          <form onSubmit={handleSubmit}>
-            <TextField
-              label="Email"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              type="email"
-              autoComplete="email"
-              autoFocus
-            />
-            <TextField
-              label="Contraseña"
-              type="password"
-              variant="outlined"
-              fullWidth
-              margin="normal"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-            >
-              {loading ? 'Ingresando...' : 'Ingresar'}
-            </Button>
-          </form>
-        </Paper>
+        {/* Logo arriba del login */}
+        <Box sx={{ mb: 2, textAlign: 'center', backgroundColor: '#239423ff', color: 'white', padding: '10px', borderRadius: '25px' }}>
+          <Logo size="large" showText={false} />
+        </Box>
+
+        <Card elevation={6} sx={{ width: '100%', maxWidth: 400 }}>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <LockOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', mb: 2 }} />
+              <Typography component="h2" variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
+                Iniciar Sesión
+              </Typography>
+            </Box>
+
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            
+            <form onSubmit={handleSubmit}>
+              <TextField
+                label="Email"
+                variant="outlined"
+                fullWidth
+                margin="normal"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                type="email"
+                autoComplete="email"
+                autoFocus
+                disabled={loading}
+              />
+              <TextField
+                label="Contraseña"
+                type="password"
+                variant="outlined"
+                fullWidth
+                margin="normal"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                disabled={loading}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ mt: 3, mb: 2, py: 1.5 }}
+                disabled={loading}
+              >
+                {loading ? 'Ingresando...' : 'Ingresar'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </Box>
     </Container>
   );

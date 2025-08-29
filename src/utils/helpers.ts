@@ -1,4 +1,3 @@
-// src/utils/helpers.ts
 
 /**
  * Formatea valores nulos o indefinidos para mostrar un guión en la UI

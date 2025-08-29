@@ -264,7 +264,7 @@ async function insertInitialAdminUser() {
         hashedPassword,
         'admin'
       ]);
-      console.log('Usuario admin creado: admin@soporte.com / Ax2012123');
+      console.log('Usuario admin creado exitosamente');
     } else {
       console.log('Usuario admin ya existe en la base de datos');
     }
@@ -292,7 +292,7 @@ async function insertInitialInvitadoUser() {
         hashedPassword,
         'guest'
       ]);
-      console.log('Usuario invitado creado: invitado@soporte.com / invitado123');
+      console.log('Usuario invitado creado exitosamente');
     } else {
       console.log('Usuario invitado ya existe en la base de datos');
     }
