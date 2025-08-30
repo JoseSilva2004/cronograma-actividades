@@ -116,7 +116,9 @@ export const Footer: React.FC = () => {
               © 2025 GRUPO CANAIMA C.A Todos los derechos reservados.
             </Typography>
             <Typography variant="caption" sx={{ opacity: 0.7, color: 'rgba(255,255,255,0.6)' }}>
-              Soporte Técnico
+              Design and Developed by José Silva - Soporte Técnico
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', opacity: 0.7, color: 'rgba(255,255,255,0.6)' }}>
             </Typography>
           </Box>
         </Box>
