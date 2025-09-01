@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -17,19 +17,24 @@ import {
   TextField,
   InputAdornment,
   Pagination,
-  Stack
-} from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import SearchIcon from '@mui/icons-material/Search';
-import { AddActivityDialog } from '../AddActivityDialog';
-import { EditActivityDialog } from '../EditActivityDialog';
-import { ConfirmDialog } from '../ConfirmDialog';
-import { fetchActivities, deleteActivity, fetchZonas, Zona } from '../../services/api';
-import { Activity, statusLabels } from './../../types/activity';
-import { getCurrentUser } from '../../services/api';
-import { formatNullableValue } from '../../utils/helpers';
+  Stack,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
+import { AddActivityDialog } from "../AddActivityDialog";
+import { EditActivityDialog } from "../EditActivityDialog";
+import { ConfirmDialog } from "../ConfirmDialog";
+import {
+  fetchActivities,
+  deleteActivity,
+  fetchZonas,
+  Zona,
+} from "../../services/api";
+import { Activity, statusLabels } from "./../../types/activity";
+import { getCurrentUser } from "../../services/api";
+import { formatNullableValue } from "../../utils/helpers";
 
 export const ActivityList = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -42,32 +47,32 @@ export const ActivityList = () => {
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const activitiesPerPage = 5;
 
   const user = getCurrentUser();
-  const isGuest = user.rol === 'guest';
+  const isGuest = user.rol === "guest";
 
   const loadData = async () => {
     try {
       setRefreshing(true);
       const [activitiesData, zonasData] = await Promise.all([
         fetchActivities(),
-        fetchZonas()
+        fetchZonas(),
       ]);
       setZonas(zonasData);
-      
+
       const formattedActivities = activitiesData.map((activity) => ({
         ...activity,
-        estado: activity.estado as Activity['estado'],
-        zona: zonasData.find(z => z.id === activity.zona_id) || null,
+        estado: activity.estado as Activity["estado"],
+        zona: zonasData.find((z) => z.id === activity.zona_id) || null,
       })) as Activity[];
-      
+
       setActivities(formattedActivities);
       setFilteredActivities(formattedActivities);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error("Error loading data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,14 +85,25 @@ export const ActivityList = () => {
 
   // Filtrar actividades basado en el término de búsqueda
   useEffect(() => {
-    const filtered = activities.filter(activity =>
-      activity.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.responsable?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.zona?.zona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.zona?.subzona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.zona?.tienda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.zona?.empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      statusLabels[activity.estado].toLowerCase().includes(searchTerm.toLowerCase())
+    const filtered = activities.filter(
+      (activity) =>
+        activity.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.responsable
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        activity.zona?.zona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.zona?.subzona
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        activity.zona?.tienda
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        activity.zona?.empresa
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        statusLabels[activity.estado]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
     );
     setFilteredActivities(filtered);
     setCurrentPage(1); // Resetear a la primera página al buscar
@@ -96,21 +112,26 @@ export const ActivityList = () => {
   // Calcular actividades para la página actual
   const indexOfLastActivity = currentPage * activitiesPerPage;
   const indexOfFirstActivity = indexOfLastActivity - activitiesPerPage;
-  const currentActivities = filteredActivities.slice(indexOfFirstActivity, indexOfLastActivity);
+  const currentActivities = filteredActivities.slice(
+    indexOfFirstActivity,
+    indexOfLastActivity
+  );
   const totalPages = Math.ceil(filteredActivities.length / activitiesPerPage);
 
+  //Manejar el cliente de eliminación
   const handleDeleteClick = (id: number) => {
     setActivityToDelete(id);
     setConfirmDialogOpen(true);
   };
 
+  // Confirmar eliminación
   const handleConfirmDelete = async () => {
     if (activityToDelete) {
       try {
         await deleteActivity(activityToDelete);
         await loadData();
       } catch (error) {
-        console.error('Error deleting activity:', error);
+        console.error("Error deleting activity:", error);
       }
     }
     setConfirmDialogOpen(false);
@@ -130,48 +151,65 @@ export const ActivityList = () => {
     setSearchTerm(event.target.value);
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (
+    event: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
     setCurrentPage(value);
   };
 
+  // Formatear fecha a un formato legible
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     };
-    return new Date(dateString).toLocaleDateString('es-ES', options);
+    return new Date(dateString).toLocaleDateString("es-ES", options);
   };
 
+  // Función para el color del chip de estado
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case 'completado': return 'success';
-      case 'en_progreso': return 'warning';
-      case 'en_ejecucion': return 'info';
-      case 'programado': return 'secondary';
-      default: return 'default';
+      case "completado":
+        return "success";
+      case "en_progreso":
+        return "warning";
+      case "en_ejecucion":
+        return "info";
+      case "programado":
+        return "secondary";
+      default:
+        return "default";
     }
   };
-// Función para el color de fondo de las filas
-const getRowBackgroundColor = (index: number) => {
-  const globalIndex = indexOfFirstActivity + index;
-  return globalIndex % 2 === 0 
-    ? '#ffffff' // Blanco para filas pares
-    : '#e8ebeeff'; // Gris muy claro para filas impares
-};
+  // Función para el color de fondo de las filas
+  const getRowBackgroundColor = (index: number) => {
+    const globalIndex = indexOfFirstActivity + index;
+    return globalIndex % 2 === 0
+      ? "#ffffff" // Blanco para filas pares
+      : "#e8ebeeff"; // Gris muy claro para filas impares
+  };
 
-// Función para el color al hacer hover
-const getRowHoverColor = (index: number) => {
-  const globalIndex = indexOfFirstActivity + index;
-  return globalIndex % 2 === 0 
-    ? '#e3f2fd' // Azul claro al hover para filas pares
-    : '#bbdefb'; // Azul un poco más oscuro al hover para filas impares
-};
+  // Función para el color al hacer hover
+  const getRowHoverColor = (index: number) => {
+    const globalIndex = indexOfFirstActivity + index;
+    return globalIndex % 2 === 0
+      ? "#e3f2fd" 
+      : "#bbdefb"; 
+  };
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "50vh",
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -368,6 +406,19 @@ const getRowHoverColor = (index: number) => {
               >
                 Asignado
               </TableCell>
+              <TableCell
+                sx={{
+                  color: "white",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                  minWidth: 180,
+                  py: 2,
+                  borderBottom: "none",
+                  backgroundColor: "#1976d2",
+                }}
+              >
+                Última Actualización
+              </TableCell>
               {!isGuest && (
                 <TableCell
                   sx={{
@@ -449,6 +500,32 @@ const getRowHoverColor = (index: number) => {
                     {activity.created_at
                       ? formatDate(activity.created_at)
                       : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        {activity.updated_at
+                          ? formatDate(activity.updated_at)
+                          : "—"}
+                      </Typography>
+                      {activity.updated_at !== activity.created_at && (
+                        <Tooltip title="Modificado">
+                          <Box
+                            sx={{
+                              ml: 1,
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              backgroundColor: "primary.main",
+                              animation: "pulse 1.5s infinite",
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
                   {!isGuest && (
                     <TableCell>

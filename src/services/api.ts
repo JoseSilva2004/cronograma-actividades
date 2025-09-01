@@ -7,6 +7,7 @@ export interface Activity {
   estado: string;
   responsable: string;
   created_at: string;
+  updated_at: string;
   zona_id: number | null;
   zona?: {
     id: number;

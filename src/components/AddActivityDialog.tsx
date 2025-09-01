@@ -283,7 +283,7 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
               value={subzonaSeleccionada ?? ''}
               onChange={(e) => setSubzonaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">Ninguna</MenuItem>
               {subzonasFiltradas.map((subzona) => (
                 <MenuItem key={subzona} value={subzona}>
                   {subzona}
@@ -302,7 +302,7 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
               value={tiendaSeleccionada ?? ''}
               onChange={(e) => setTiendaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">Ninguna</MenuItem>
               {tiendasFiltradas.map((tienda) => (
                 <MenuItem key={tienda} value={tienda}>
                   {tienda}
@@ -321,7 +321,7 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
               value={empresaSeleccionada ?? ''}
               onChange={(e) => setEmpresaSeleccionada(e.target.value || null)}
             >
-              <MenuItem value="">—</MenuItem>
+              <MenuItem value="">Ninguna</MenuItem>
               {empresasFiltradas.map((empresa) => (
                 <MenuItem key={empresa} value={empresa}>
                   {empresa}

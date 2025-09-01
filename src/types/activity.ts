@@ -14,8 +14,9 @@ export interface Activity {
   estado: Status;
   responsable: string;
   created_at: string;
+  updated_at: string;
   zona_id: number | null;
-  zona?: Zona; // Datos completos de la zona (para JOINs)
+  zona?: Zona; 
 }
 
 export interface CreateActivityInput {
@@ -37,7 +38,7 @@ export const statusLabels: Record<Status, string> = {
   'completado': '✅ Completado'
 };
 
-// Nueva lista de responsables predefinidos
+// lista de responsables predefinidos
 export const responsables = [
   { value: '', label: 'Seleccione una persona', disabled: true}, 
   { value: 'Jeisson', label: 'Jeisson' },
@@ -46,5 +47,5 @@ export const responsables = [
   { value: 'Oscar', label: 'Oscar' },
   { value: 'Edgar', label: 'Edgar' },
   { value: 'Edurmis', label: 'Edurmis' },
-  { value: 'Sin asignar', label: 'Sin asignar' } // Opción para no asignar
+  { value: 'Sin asignar', label: 'Sin asignar' } 
 ];
