@@ -65,7 +65,7 @@ async function insertInitialZonasData() {
       ["GG MGTA 2022, C.A.", "MR PRICE", "Centro", "Margarita"],
       ["HH MGTA 2022, C.A.", "MR PRICE", "Centro", "Margarita"],
       ["JJ MGTA 2022, C.A.", "OUTLET", "Centro", "Margarita"],
-      ["BB MGTA 2022, C.A.", "FOREVER 21 SHOES", "Sambil", "Margarita"],
+      ["BB MGTA 2022, C.A.", "FOREVER 21", "Sambil", "Margarita"],
       ["CC MGTA 2022, C.A.", "ILAHUI", "Sambil", "Margarita"],
       ["RR MGTA 2022, C.A.", "MR PRICE", "Sambil", "Margarita"],
       ["SS MGTA 2022, C.A.", "MOTARRO", "Sambil", "Margarita"],

@@ -112,7 +112,7 @@ app.get('/api/actividades', async (req, res) => {
              COALESCE(z.empresa, '-') as empresa
       FROM actividades a
       LEFT JOIN zonas z ON a.zona_id = z.id
-      ORDER BY a.created_at DESC
+      ORDER BY a.updated_at DESC
     `);
     res.json(rows);
   } catch (error) {
