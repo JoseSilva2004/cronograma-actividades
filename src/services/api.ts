@@ -96,11 +96,13 @@ export const logout = () => {
   localStorage.removeItem('user');
 };
 
+// Obtener el usuario actual desde localStorage
 export const getCurrentUser = (): User => {
   const userJson = localStorage.getItem('user');
   return userJson ? (JSON.parse(userJson) as AuthenticatedUser) : { rol: 'guest' };
 };
 
+// Obtener el perfil del usuario autenticado
 export const fetchUserProfile = async (): Promise<User> => {
   const response = await authFetch(`${API_URL}/me`);
   return await response.json();
@@ -112,6 +114,7 @@ export const fetchActivities = async (): Promise<Activity[]> => {
   return await response.json();
 };
 
+// Crear una nueva actividad
 export const createActivity = async (activity: {
   nombre: string;
   estado: string;
@@ -128,6 +131,7 @@ export const createActivity = async (activity: {
   return await response.json();
 };
 
+// Actualizar una actividad existente
 export const updateActivity = async (
   id: number,
   activity: {
@@ -144,6 +148,7 @@ export const updateActivity = async (
   return await response.json();
 };
 
+// Eliminar una actividad
 export const deleteActivity = async (id: number): Promise<void> => {
   await authFetch(`${API_URL}/actividades/${id}`, { 
     method: 'DELETE'
@@ -156,6 +161,7 @@ export const fetchZonas = async (): Promise<Zona[]> => {
   return await response.json();
 };
 
+// Crear una nueva zona
 export const createZona = async (zona: {
   zona: string;
   subzona: string;
@@ -169,6 +175,7 @@ export const createZona = async (zona: {
   return await response.json();
 };
 
+// Actualizar una zona existente
 export const updateZona = async (
   id: number,
   zona: {
@@ -185,6 +192,7 @@ export const updateZona = async (
   return await response.json();
 };
 
+// Eliminar una zona
 export const deleteZona = async (id: number): Promise<void> => {
   await authFetch(`${API_URL}/zonas/${id}`, {
     method: 'DELETE'

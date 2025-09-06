@@ -10,6 +10,7 @@ import { Login } from './components/Login';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { AppHeader } from './components/AppHeader';
 import { Footer } from './components/Footer';
+import { Dashboard } from './components/Dashboard/Dashboard';
 
 // Componente ProtectedRoute mejorado
 const ProtectedRoute = ({ 
@@ -21,6 +22,7 @@ const ProtectedRoute = ({
 }) => {
   const { user, loading } = useAuth();
 
+  // Mostrar un indicador de carga mientras se verifica la autenticación
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -30,10 +32,12 @@ const ProtectedRoute = ({
     );
   }
 
+  // Si no hay usuario autenticado, redirige al login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
+  // Verifica si el rol del usuario está en la lista de roles permitidos
   if (!allowedRoles.includes(user.rol)) {
     return <Navigate to="/" replace />;
   }
@@ -43,18 +47,26 @@ const ProtectedRoute = ({
 
 const AppContent: React.FC = () => {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <AppHeader />
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1 }}>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route 
-            path="/activities" 
+          <Route
+            path="/activities"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'user', 'guest']}>
+              <ProtectedRoute allowedRoles={["admin", "user", "guest"]}>
                 <ActivityList />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "user", "guest"]}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
           />
           <Route path="/" element={<Navigate to="/activities" replace />} />
         </Routes>

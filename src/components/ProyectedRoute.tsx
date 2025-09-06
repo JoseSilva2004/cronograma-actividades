@@ -16,14 +16,17 @@ export const ProtectedRoute = ({
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  // Mostrar un indicador de carga mientras se verifica la autenticación
   if (loading) {
     return <div>Cargando...</div>;
   }
 
+  // Si no hay usuario autenticado, redirige al login
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Verifica si el rol del usuario está en la lista de roles permitidos
   if (!allowedRoles.includes(user.rol)) {
     return <Navigate to="/no-autorizado" replace />;
   }

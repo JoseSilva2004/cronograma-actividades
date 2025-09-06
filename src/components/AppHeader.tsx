@@ -1,12 +1,14 @@
+//AppHeader.tsx
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, ButtonGroup } from '@mui/material';
 import { useAuth } from './AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 
 export const AppHeader = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const showUserInfo = user && location.pathname !== '/login';
 
@@ -20,6 +22,36 @@ export const AppHeader = () => {
         
         {showUserInfo && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* Navegación */}
+            <ButtonGroup variant="text" sx={{ mr: 2 }}>
+              <Button 
+                color="inherit" 
+                onClick={() => navigate('/activities')}
+                variant={location.pathname === '/activities' ? 'outlined' : 'text'}
+                sx={{ 
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Actividades
+              </Button>
+              <Button 
+                color="inherit" 
+                onClick={() => navigate('/dashboard')}
+                variant={location.pathname === '/dashboard' ? 'outlined' : 'text'}
+                sx={{ 
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Dashboard
+              </Button>
+            </ButtonGroup>
+
             {'nombre' in user ? (
               <Typography variant="body2" sx={{ color: 'white' }}>
                 {user.nombre} ({user.rol})

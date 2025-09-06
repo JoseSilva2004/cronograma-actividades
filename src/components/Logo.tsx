@@ -27,13 +27,13 @@ export const Logo: React.FC<LogoProps> = ({ size = 'medium', showText = true }) 
           width: getSize(),
           height: getSize(),
           objectFit: 'contain',
-          filter: 'brightness(0) invert(1)' // Hace el logo blanco para contrastar con fondo oscuro
+          filter: 'brightness(0) invert(1)'
         }}
       />
       {showText && (
         <Box 
           component="img" 
-          src="/logo-text.png" // Si tienes texto separado
+          src={logo}
           alt="Soporte Técnico"
           sx={{
             height: getSize() * 0.4,
