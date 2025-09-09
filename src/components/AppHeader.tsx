@@ -29,9 +29,11 @@ export const AppHeader = () => {
                 onClick={() => navigate('/activities')}
                 variant={location.pathname === '/activities' ? 'outlined' : 'text'}
                 sx={{ 
+                  margin: '5px',
                   color: 'white',
+                  backgroundColor: '#0c4b8aff',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   }
                 }}
               >
@@ -42,9 +44,12 @@ export const AppHeader = () => {
                 onClick={() => navigate('/dashboard')}
                 variant={location.pathname === '/dashboard' ? 'outlined' : 'text'}
                 sx={{ 
+                  margin: '5px',
                   color: 'white',
+                  backgroundColor: '#0c4b8aff',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: 'white'
                   }
                 }}
               >

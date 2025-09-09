@@ -40,6 +40,15 @@ const STATUS_COLORS = {
   completado: '#4caf50'
 };
 
+//Colores para el fondo de las tarjetas
+const STATUS_BACKGROUND_COLORS = {
+  pendiente: '#e9c58eff',
+  en_progreso: '#99c9f1ff',
+  programado: '#e7a1f3ff',
+  en_ejecucion: '#8decf8ff',
+  completado: '#9df1a0ff'
+};
+
 export const Dashboard = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
@@ -213,7 +222,7 @@ export const Dashboard = () => {
         justifyContent: 'center'
       }}>
         {/* Tarjeta Total */}
-        <Card sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 200 }}>
+        <Card sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 200, backgroundColor: '#fff59fff' }}>
           <CardContent sx={{ textAlign: 'center' }}>
             <Typography color="textSecondary" gutterBottom>
               Total
@@ -235,7 +244,7 @@ export const Dashboard = () => {
             : '0';
             
           return (
-            <Card key={key} sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 200 }}>
+            <Card key={key} sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 200, backgroundColor: STATUS_BACKGROUND_COLORS[key as Status] }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Chip 
                   label={label} 
