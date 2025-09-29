@@ -83,6 +83,3 @@ Sistema web completo para la gestión y seguimiento de actividades, desarrollado
 - Eliminación temporal y permanente
 - Visualización segura de contraseñas
 - Copiado al portapapeles
-
-
-To learn React, check out the [React documentation](https://reactjs.org/).
