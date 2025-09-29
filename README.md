@@ -1,46 +1,89 @@
-# Getting Started with Create React App
+# 📋 Sistema de Gestión de Actividades - GRUPO CANAIMA
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 🚀 Descripción del Proyecto
 
-## Available Scripts
+Sistema web completo para la gestión y seguimiento de actividades, desarrollado con **React.js + TypeScript** en el frontend y **Node.js + Express + MySQL** en el backend. Diseñado específicamente para las necesidades operativas de GRUPO CANAIMA.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 🏗️ Arquitectura Técnica
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Frontend
+- **React 18** con TypeScript
+- **Material-UI (MUI)** para componentes de UI
+- **React Router** para navegación
+- **Context API** para estado global
+- **Axios** para consumo de APIs
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Backend
+- **Node.js** con Express.js
+- **MySQL** con mysql2/promise
+- **JWT** para autenticación
+- **bcryptjs** para encriptación
+- **CORS** habilitado
 
-### `npm test`
+### Características de Seguridad
+- Autenticación JWT con expiración
+- Contraseñas encriptadas con bcrypt
+- Middleware de autorización por roles
+- Validación de datos en frontend y backend
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## 👥 Sistema de Roles y Permisos
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 🔐 Roles Disponibles
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+| Rol | Permisos | Descripción |
+|-----|----------|-------------|
+| **Super Admin** | Acceso completo al sistema | Administrador principal con todos los privilegios |
+| **Admin** | Gestión de actividades y dashboard | Puede crear, editar y eliminar actividades |
+| **User** | Solo lectura de actividades y dashboard | Usuario regular con acceso limitado |
+| **Guest** | Acceso básico de solo lectura | Usuario invitado sin autenticación |
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
+## 📊 Módulos Principales
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### 1. 🏠 Dashboard
+- **Gráficos interactivos** de distribución de actividades por estado
+- **Estadísticas en tiempo real** con tarjetas informativas
+- **Filtros avanzados** por zona, responsable y estado
+- **Vista responsive** adaptada a dispositivos móviles
+- **Actividades recientes** con timeline
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. 📝 Gestión de Actividades
+#### Funcionalidades Principales:
+- ✅ **Lista completa** de actividades con paginación
+- ✅ **Búsqueda en tiempo real** por múltiples campos
+- ✅ **Filtros avanzados** por estado y responsable
+- ✅ **Vista dual** (tabla/tarjetas) según dispositivo
+- ✅ **Crear, editar y eliminar** actividades (solo admin)
+- ✅ **Asignación de zonas** con selección jerárquica
+- ✅ **Seguimiento de estados** con colores visuales
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+#### Estados de Actividades:
+- 📋 **Pendiente** - Actividad por iniciar
+- ⏳ **En progreso** - Actividad en desarrollo  
+- 📅 **Programado** - Actividad planificada
+- 🖥️ **En ejecución** - Actividad en proceso activo
+- ✅ **Completado** - Actividad finalizada
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### 3. 👥 Gestión de Usuarios (Solo Super Admin)
+#### Características:
+- 🔐 **Registro seguro** de nuevos usuarios
+- 👁️ **Visibilidad de contraseñas** con sistema de ojo
+- 📋 **Tabla completa** con información detallada
+- 🎯 **Control de estados** (activo/inactivo)
+- 🗑️ **Eliminación segura** (lógica y física)
+- 📧 **Gestión de emails** únicos por usuario
 
-## Learn More
+#### Funciones Específicas:
+- Activación/desactivación de usuarios
+- Edición de perfiles y roles
+- Eliminación temporal y permanente
+- Visualización segura de contraseñas
+- Copiado al portapapeles
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
