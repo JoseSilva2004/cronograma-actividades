@@ -594,7 +594,7 @@ export const UserManagement: React.FC = () => {
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title={canDeleteUser(user) ? "Eliminar definitivamente" : "No eliminable"}>
+                        <Tooltip title={canDeleteUser(user) ? "Eliminar usuario" : "No eliminable"}>
                           <span>
                             <IconButton
                               onClick={() => handlePermanentDeleteRequest(user)}
@@ -740,7 +740,7 @@ export const UserManagement: React.FC = () => {
         <ConfirmDialog
           open={permanentDialogOpen}
           title="Eliminar Definitivamente"
-          message={`¿Estás seguro de que deseas eliminar DEFINITIVAMENTE al usuario ${userToDeletePermanent.nombre}? Esta acción no se puede deshacer.`}
+          message={`¿Estás seguro de que deseas eliminar al usuario ${userToDeletePermanent.nombre}? Esta acción no se puede deshacer.`}
           onConfirm={handleConfirmPermanentDelete}
           onCancel={() => setPermanentDialogOpen(false)}
         />
