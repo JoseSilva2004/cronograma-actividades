@@ -7,7 +7,10 @@ const jwt = require('jsonwebtoken');
 const {initializeDatabase} = require("./create-tables");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: true, // Permite todos los orígenes
+  credentials: true
+}));
 app.use(express.json());
 
 // Configuración de MySQL
@@ -21,12 +24,11 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-
 // Configuración JWT
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '8h';
 
-// Middleware de autenticación
+// Middleware de autenticación - APLICADO A TODAS LAS RUTAS API
 async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -38,23 +40,42 @@ async function authenticateToken(req, res, next) {
 
   try {
     const user = jwt.verify(token, JWT_SECRET);
-    const [users] = await pool.query('SELECT id, email, nombre, rol FROM usuarios WHERE id = ?', [user.id]);
+    const [users] = await pool.query('SELECT id, email, nombre, rol, activo FROM usuarios WHERE id = ?', [user.id]);
     
     if (users.length === 0) {
       return res.status(403).json({ error: 'Usuario no encontrado' });
     }
     
-    req.user = users[0];
+    // VERIFICAR SI EL USUARIO ESTÁ ACTIVO (excepto para guest)
+    const currentUser = users[0];
+    if (currentUser.rol !== 'guest' && !currentUser.activo) {
+      return res.status(403).json({ error: 'Usuario inactivo' });
+    }
+    
+    req.user = currentUser;
     next();
   } catch (error) {
     console.error('Error de autenticación:', error);
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 }
+// Middleware para verificar super administrador - CORREGIDO
+function requireSuperAdmin(req, res, next) {
+  // Verificar que req.user existe
+  if (!req.user) {
+    return res.status(401).json({ error: 'Usuario no autenticado' });
+  }
+  
+  if (req.user.rol !== 'super_admin') {
+    return res.status(403).json({ error: 'Se requieren permisos de super administrador' });
+  }
+  next();
+}
 
-//Enpoints
-// Endpoint de login
+// Aplicar el middleware de autenticación a TODAS las rutas API
+app.use('/api', authenticateToken);
 
+// Endpoints públicos (sin autenticación requerida)
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   
@@ -65,6 +86,12 @@ app.post('/api/login', async (req, res) => {
     }
     
     const user = users[0];
+    
+    // VERIFICAR SI EL USUARIO ESTÁ ACTIVO
+    if (!user.activo) {
+      return res.status(403).json({ error: 'Usuario inactivo. Contacte al administrador.' });
+    }
+    
     const passwordMatch = await bcrypt.compare(password, user.password);
     
     if (!passwordMatch) {
@@ -92,14 +119,40 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Endpoint para obtener perfil
-app.get('/api/me', authenticateToken, (req, res) => {
-  res.json(req.user);
+// Endpoint para registrar usuario invitado
+app.post('/api/register-guest', async (req, res) => {
+  const { nombre, email, password } = req.body;
+
+  try {
+    // Verificar si el email ya existe
+    const [existingUser] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+    if (existingUser.length > 0) {
+      return res.status(400).json({ error: 'El email ya está registrado' });
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insertar usuario con rol 'guest'
+    const [result] = await pool.query(
+      'INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, "guest")',
+      [email, nombre, hashedPassword]
+    );
+
+    res.status(201).json({ 
+      message: 'Usuario invitado registrado exitosamente',
+      id: result.insertId 
+    });
+  } catch (error) {
+    console.error('Error al registrar usuario invitado:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
 });
 
-// Protección de endpoints
-app.use('/api/actividades', authenticateToken);
-app.use('/api/zonas', authenticateToken);
+// Endpoint para obtener perfil
+app.get('/api/me', (req, res) => {
+  res.json(req.user);
+});
 
 // Endpoints de actividades (protegidos)
 app.get('/api/actividades', async (req, res) => {
@@ -121,10 +174,10 @@ app.get('/api/actividades', async (req, res) => {
   }
 });
 
-// En el endpoint POST /api/actividades
 app.post('/api/actividades', async (req, res) => {
-  if (req.user.rol === 'guest') {
-    return res.status(403).json({ error: 'Acceso no autorizado' });
+  // Solo permitir a admin y super_admin crear actividades
+  if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
+    return res.status(403).json({ error: 'Solo administradores pueden crear actividades' });
   }
   
   const { nombre, estado, responsable, zona_id } = req.body;
@@ -161,10 +214,10 @@ app.post('/api/actividades', async (req, res) => {
   }
 });
 
-// Endpoint para actualizar una actividad
 app.put('/api/actividades/:id', async (req, res) => {
-  if (req.user.rol === 'guest') {
-    return res.status(403).json({ error: 'Acceso no autorizado para actualizar' });
+  // Solo permitir a admin y super_admin editar actividades
+  if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
+    return res.status(403).json({ error: 'Solo administradores pueden editar actividades' });
   }
 
   const { id } = req.params;
@@ -199,10 +252,9 @@ app.put('/api/actividades/:id', async (req, res) => {
   }
 });
 
-// Endpoint para eliminar una actividad
 app.delete('/api/actividades/:id', async (req, res) => {
   // Verificar permisos - solo admin puede eliminar
-  if (req.user.rol !== 'admin') {
+  if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
     return res.status(403).json({ error: 'Solo administradores pueden eliminar actividades' });
   }
 
@@ -245,11 +297,34 @@ app.get('/api/zonas', async (req, res) => {
   }
 });
 
-// Endpoint para registrar usuario invitado
-app.post('/api/register-guest', async (req, res) => {
-  const { nombre, email, password } = req.body;
+// Endpoints de gestión de usuarios (solo super admin)
+app.get('/api/usuarios', requireSuperAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id, email, nombre, rol, activo, created_at, updated_at 
+      FROM usuarios 
+      ORDER BY created_at DESC
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ error: 'Error al obtener usuarios' });
+  }
+});
+
+app.post('/api/usuarios', requireSuperAdmin, async (req, res) => {
+  const { email, nombre, password, rol } = req.body;
 
   try {
+    // Validaciones
+    if (!email || !nombre || !password || !rol) {
+      return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+
+    if (!['admin', 'user', 'guest'].includes(rol)) {
+      return res.status(400).json({ error: 'Rol no válido' });
+    }
+
     // Verificar si el email ya existe
     const [existingUser] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
     if (existingUser.length > 0) {
@@ -259,24 +334,174 @@ app.post('/api/register-guest', async (req, res) => {
     // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insertar usuario con rol 'guest'
+    // Insertar usuario
     const [result] = await pool.query(
-      'INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, "guest")',
-      [email, nombre, hashedPassword]
+      'INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)',
+      [email, nombre, hashedPassword, rol]
     );
 
-    res.status(201).json({ 
-      message: 'Usuario invitado registrado exitosamente',
-      id: result.insertId 
-    });
+    // Obtener el usuario creado (sin password)
+    const [newUser] = await pool.query(
+      'SELECT id, email, nombre, rol, activo, created_at FROM usuarios WHERE id = ?',
+      [result.insertId]
+    );
+
+    res.status(201).json(newUser[0]);
   } catch (error) {
-    console.error('Error al registrar usuario invitado:', error);
+    console.error('Error al crear usuario:', error);
     res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
+app.put('/api/usuarios/:id', requireSuperAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { email, nombre, rol, activo } = req.body;
+
+  try {
+    // Verificar si el usuario existe
+    const [user] = await pool.query('SELECT id, rol FROM usuarios WHERE id = ?', [id]);
+    if (user.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // No permitir modificar super_admin (excepto por otro super_admin)
+    if (user[0].rol === 'super_admin' && req.user.id !== id) {
+      return res.status(403).json({ error: 'No se pueden modificar otros usuarios super administrador' });
+    }
+
+    // Validar rol
+    if (rol && !['admin', 'user', 'guest'].includes(rol)) {
+      return res.status(400).json({ error: 'Rol no válido' });
+    }
+
+    // Construir query dinámica
+    const updates = [];
+    const values = [];
+
+    if (email) {
+      // Verificar si el nuevo email ya existe en otro usuario
+      const [existingEmail] = await pool.query(
+        'SELECT id FROM usuarios WHERE email = ? AND id != ?',
+        [email, id]
+      );
+      if (existingEmail.length > 0) {
+        return res.status(400).json({ error: 'El email ya está en uso por otro usuario' });
+      }
+      updates.push('email = ?');
+      values.push(email);
+    }
+
+    if (nombre) {
+      updates.push('nombre = ?');
+      values.push(nombre);
+    }
+
+    if (rol) {
+      updates.push('rol = ?');
+      values.push(rol);
+    }
+
+    if (activo !== undefined) {
+      updates.push('activo = ?');
+      values.push(activo);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No hay campos para actualizar' });
+    }
+
+    values.push(id);
+
+    await pool.query(
+      `UPDATE usuarios SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    // Obtener el usuario actualizado
+    const [updatedUser] = await pool.query(
+      'SELECT id, email, nombre, rol, activo, created_at, updated_at FROM usuarios WHERE id = ?',
+      [id]
+    );
+
+    res.json(updatedUser[0]);
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+//endpoint para desactivar usuario (lógico y físico)
+app.delete('/api/usuarios/:id', requireSuperAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [user] = await pool.query('SELECT id, rol FROM usuarios WHERE id = ?', [id]);
+    if (user.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+    }
+    if (user[0].rol === 'super_admin') {
+      return res.status(403).json({ error: 'No se pueden eliminar usuarios super administrador' });
+    }
+
+    // Solo desactivar
+    await pool.query('UPDATE usuarios SET activo = FALSE WHERE id = ?', [id]);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+
+//endpoint para eliminar usuario permanentemente (físico)
+app.delete('/api/usuarios/:id/permanente', requireSuperAdmin, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [user] = await pool.query('SELECT id, rol FROM usuarios WHERE id = ?', [id]);
+    if (user.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+    }
+    if (user[0].rol === 'super_admin') {
+      return res.status(403).json({ error: 'No se pueden eliminar usuarios super administrador' });
+    }
+
+    // Eliminar físicamente
+    await pool.query('DELETE FROM usuarios WHERE id = ?', [id]);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+});
+// Ruta de verificación de salud del servidor
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Servidor funcionando correctamente',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Manejo de rutas no encontradas
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint no encontrado' });
+});
+
 // Iniciar servidor
-const PORT = process.env.DB_PORT;
+const PORT = process.env.PORT || 5000;
+
 initializeDatabase().then(() => {
-  app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
+    console.log(`Health check disponible en: http://localhost:${PORT}/api/health`);
+  });
+}).catch((error) => {
+  console.error('Error al inicializar la base de datos:', error);
+  process.exit(1);
 });

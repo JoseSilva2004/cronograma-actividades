@@ -179,34 +179,33 @@ async function insertInitialZonasData() {
 }
 
 // Usuario admin inicial
-async function insertInitialAdminUser() {
+async function insertInitialSuperAdmin() {
   try {
-    // Verificar si el usuario admin ya existe usando el email correcto
     const checkUserQuery = `SELECT id FROM usuarios WHERE email = ? LIMIT 1`;
-    const [users] = await pool.query(checkUserQuery, process.env.ADMIN_EMAIL);
+    const [users] = await pool.query(checkUserQuery, process.env.SUPER_ADMIN_EMAIL);
     
     if (users.length === 0) {
-      // Solo insertar si no existe
-      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+      const hashedPassword = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD, 10);
       const insertQuery = `INSERT INTO usuarios (email, nombre, password, rol) VALUES (?, ?, ?, ?)`;
       
       await pool.query(insertQuery, [
-        process.env.ADMIN_EMAIL,
-        process.env.ADMIN_NAME,
+        process.env.SUPER_ADMIN_EMAIL,
+        process.env.SUPER_ADMIN_NAME,
         hashedPassword,
-        'admin'
+        'super_admin'
       ]);
-      console.log('Usuario admin creado exitosamente');
+      console.log('Usuario super admin creado exitosamente');
     } else {
-      console.log('Usuario admin ya existe en la base de datos');
+      console.log('Usuario super admin ya existe en la base de datos');
     }
   } catch (error) {
-    console.error('Error al verificar/insertar usuario admin:', error);
+    console.error('Error al verificar/insertar usuario super admin:', error);
     throw error;
   }
 }
 
+
 module.exports = {
   insertInitialZonasData,
-  insertInitialAdminUser
+  insertInitialSuperAdmin
 };

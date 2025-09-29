@@ -107,7 +107,7 @@ export const Footer: React.FC = () => {
             borderTop: '1px solid rgba(255,255,255,0.1)'
           }}
         >
-          <Logo size="medium" showText={false} />
+          <Logo size="medium" showText={false} color='white' />
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1, color: 'white' }}>
               GRUPO CANAIMA C.A

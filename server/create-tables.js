@@ -41,16 +41,18 @@ async function initializeDatabase() {
   `;
 
   // Crear tabla usuarios
-  const createUsersTableQuery = `
-    CREATE TABLE IF NOT EXISTS usuarios (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(100) NOT NULL UNIQUE,
-      nombre VARCHAR(100) NOT NULL,
-      password VARCHAR(255) NOT NULL,
-      rol ENUM('admin', 'user', 'guest') NOT NULL DEFAULT 'user',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `;
+ const createUsersTableQuery = `
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    rol ENUM('super_admin', 'admin', 'user', 'guest') NOT NULL DEFAULT 'user',
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+`;
 
   try {
     await pool.query(createZonasTableQuery);
@@ -61,7 +63,7 @@ async function initializeDatabase() {
 
     // Insertar datos iniciales
     await init.insertInitialZonasData();
-    await init.insertInitialAdminUser();
+    await init.insertInitialSuperAdmin();
   } catch (error) {
     console.error("Error al inicializar la base de datos:", error);
     throw error;

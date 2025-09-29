@@ -18,14 +18,21 @@ import {
   InputAdornment,
   Pagination,
   Stack,
+  useMediaQuery,
+  useTheme,
+  Card,
+  CardContent,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
+import DescriptionIcon from "@mui/icons-material/Description";
+import ViewWeekIcon from "@mui/icons-material/ViewWeek";
 import { AddActivityDialog } from "../AddActivityDialog";
 import { EditActivityDialog } from "../EditActivityDialog";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { ActivityReport } from "../ActivityReport/ActivityReport";
 import {
   fetchActivities,
   deleteActivity,
@@ -43,17 +50,26 @@ export const ActivityList = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [currentActivity, setCurrentActivity] = useState<Activity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const activitiesPerPage = 5;
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  const activitiesPerPage = isMobile ? 3 : 5;
 
   const user = getCurrentUser();
-  const isGuest = user.rol === "guest";
+  const isAdmin = user.rol === "admin" || user.rol === "super_admin";
 
+  // Cargar datos
   const loadData = async () => {
     try {
       setRefreshing(true);
@@ -83,48 +99,41 @@ export const ActivityList = () => {
     loadData();
   }, []);
 
-  // Filtrar actividades basado en el término de búsqueda
+  // Auto-cambiar a vista cards en móviles
+  useEffect(() => {
+    if (isMobile && viewMode === 'table') {
+      setViewMode('cards');
+    }
+  }, [isMobile, viewMode]);
+
+  // Filtrado de actividades
   useEffect(() => {
     const filtered = activities.filter(
       (activity) =>
         activity.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.responsable
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
+        activity.responsable?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         activity.zona?.zona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.zona?.subzona
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        activity.zona?.tienda
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        activity.zona?.empresa
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        statusLabels[activity.estado]
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
+        activity.zona?.subzona?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.zona?.tienda?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.zona?.empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        statusLabels[activity.estado].toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredActivities(filtered);
-    setCurrentPage(1); // Resetear a la primera página al buscar
+    setCurrentPage(1);
   }, [searchTerm, activities]);
 
-  // Calcular actividades para la página actual
+  // Paginación
   const indexOfLastActivity = currentPage * activitiesPerPage;
   const indexOfFirstActivity = indexOfLastActivity - activitiesPerPage;
-  const currentActivities = filteredActivities.slice(
-    indexOfFirstActivity,
-    indexOfLastActivity
-  );
+  const currentActivities = filteredActivities.slice(indexOfFirstActivity, indexOfLastActivity);
   const totalPages = Math.ceil(filteredActivities.length / activitiesPerPage);
 
-  //Manejar el cliente de eliminación
+  // Handlers
   const handleDeleteClick = (id: number) => {
     setActivityToDelete(id);
     setConfirmDialogOpen(true);
   };
 
-  // Confirmar eliminación
   const handleConfirmDelete = async () => {
     if (activityToDelete) {
       try {
@@ -138,11 +147,6 @@ export const ActivityList = () => {
     setActivityToDelete(null);
   };
 
-  const handleCancelDelete = () => {
-    setConfirmDialogOpen(false);
-    setActivityToDelete(null);
-  };
-
   const handleRefresh = () => {
     loadData();
   };
@@ -151,14 +155,16 @@ export const ActivityList = () => {
     setSearchTerm(event.target.value);
   };
 
-  const handlePageChange = (
-    event: React.ChangeEvent<unknown>,
-    value: number
-  ) => {
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setCurrentPage(value);
   };
 
-  // Formatear fecha a un formato legible
+  const handleGenerateReport = (activity: Activity) => {
+    setSelectedActivity(activity);
+    setReportDialogOpen(true);
+  };
+
+  // Utilidades
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
       year: "numeric",
@@ -170,46 +176,127 @@ export const ActivityList = () => {
     return new Date(dateString).toLocaleDateString("es-ES", options);
   };
 
-  // Función para el color del chip de estado
   const getStatusColor = (estado: string) => {
     switch (estado) {
-      case "completado":
-        return "success";
-      case "en_progreso":
-        return "warning";
-      case "en_ejecucion":
-        return "info";
-      case "programado":
-        return "secondary";
-      default:
-        return "default";
+      case "completado": return "success";
+      case "en_progreso": return "warning";
+      case "en_ejecucion": return "info";
+      case "programado": return "secondary";
+      default: return "default";
     }
   };
-  // Función para el color de fondo de las filas
-  const getRowBackgroundColor = (index: number) => {
-    const globalIndex = indexOfFirstActivity + index;
-    return globalIndex % 2 === 0
-      ? "#ffffff" // Blanco para filas pares
-      : "#e8ebeeff"; // Gris muy claro para filas impares
-  };
 
-  // Función para el color al hacer hover
-  const getRowHoverColor = (index: number) => {
-    const globalIndex = indexOfFirstActivity + index;
-    return globalIndex % 2 === 0
-      ? "#e3f2fd" 
-      : "#bbdefb"; 
-  };
+  // Componente para tarjetas en móviles
+  const ActivityCard = ({ activity, index }: { activity: Activity; index: number }) => (
+    <Card 
+      sx={{ 
+        mb: 2, 
+        p: 2,
+        backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa',
+        borderLeft: `4px solid ${theme.palette.primary.main}`
+      }}
+    >
+      <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+        {/* Header de la tarjeta */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Chip
+            label={statusLabels[activity.estado]}
+            color={getStatusColor(activity.estado) as any}
+            size="small"
+          />
+          <Typography variant="caption" color="text.secondary">
+            ID: {activity.id}
+          </Typography>
+        </Box>
+
+        {/* Contenido principal */}
+        <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1, fontSize: '1rem' }}>
+          {activity.nombre}
+        </Typography>
+
+        {/* Información de ubicación */}
+        <Box sx={{ mb: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            📍 {formatNullableValue(activity.zona?.zona)}
+            {activity.zona?.subzona && ` • ${formatNullableValue(activity.zona.subzona)}`}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            🏪 {formatNullableValue(activity.zona?.tienda)}
+          </Typography>
+        </Box>
+
+        {/* Información adicional */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="body2">
+            👤 {formatNullableValue(activity.responsable)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {formatDate(activity.created_at)}
+          </Typography>
+        </Box>
+
+        {/* Última actualización */}
+        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="caption" color="text.secondary">
+            Modificado: {formatDate(activity.updated_at)}
+          </Typography>
+          {activity.updated_at !== activity.created_at && (
+            <Tooltip title="Modificado recientemente">
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  backgroundColor: "primary.main",
+                  animation: "pulse 1.5s infinite",
+                }}
+              />
+            </Tooltip>
+          )}
+        </Box>
+
+        {/* Acciones - SOLO PARA ADMINISTRADORES */}
+        {isAdmin && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+            <Tooltip title="Editar">
+              <IconButton
+                onClick={() => {
+                  setCurrentActivity(activity);
+                  setEditDialogOpen(true);
+                }}
+                size="small"
+                color="primary"
+              >
+                <EditIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Reporte">
+              <IconButton
+                onClick={() => handleGenerateReport(activity)}
+                size="small"
+                color="info"
+              >
+                <DescriptionIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Eliminar">
+              <IconButton
+                onClick={() => handleDeleteClick(activity.id)}
+                size="small"
+                color="error"
+              >
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   if (loading) {
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "50vh",
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
         <CircularProgress />
       </Box>
     );
@@ -217,255 +304,127 @@ export const ActivityList = () => {
 
   return (
     <>
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
+      {/* Header Mejorado */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: { xs: "flex-start", sm: "center" }, 
+          flexDirection: { xs: "column", sm: "row" },
           gap: 2,
-        }}
-      >
-        <Typography
-          variant="h5"
-          component="h1"
-          sx={{ fontWeight: "bold", color: "primary.main" }}
-        >
-          📋 Tabla de Actividades
-        </Typography>
+          mb: 2
+        }}>
+          <Typography variant="h5" component="h1" sx={{ fontWeight: "bold", color: "primary.main" }}>
+            📋 Lista de Actividades
+          </Typography>
 
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-          {/* Campo de búsqueda */}
-          <TextField
-            placeholder="Buscar actividades..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ width: 250 }}
-          />
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: 'wrap' }}>
+            {/* Selector de vista solo en desktop */}
+            {!isMobile && (
+              <Tooltip title={viewMode === 'table' ? 'Vista tabla' : 'Vista tarjetas'}>
+                <IconButton 
+                  onClick={() => setViewMode(viewMode === 'table' ? 'cards' : 'table')}
+                  color="primary"
+                  size="small"
+                >
+                  <ViewWeekIcon />
+                </IconButton>
+              </Tooltip>
+            )}
 
-          <Tooltip title="Actualizar lista">
-            <IconButton onClick={handleRefresh} disabled={refreshing}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
+            <TextField
+              placeholder="Buscar actividades..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ width: { xs: "100%", sm: 250 } }}
+            />
 
-          {!isGuest && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => setAddDialogOpen(true)}
-              startIcon={<span>+</span>}
-            >
-              Nueva Actividad
-            </Button>
-          )}
+            <Tooltip title="Actualizar lista">
+              <IconButton onClick={handleRefresh} disabled={refreshing}>
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+
+            {/* Botón Nueva Actividad - SOLO PARA ADMINISTRADORES */}
+            {isAdmin && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setAddDialogOpen(true)}
+                size={isSmallMobile ? "small" : "medium"}
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  minWidth: { xs: 'auto', sm: '140px' }
+                }}
+              >
+                {isSmallMobile ? '+ Nueva Actividad' : '+ Nueva Actividad'}
+              </Button>
+            )}
+          </Box>
+        </Box>
+
+        {/* Información de resultados */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Mostrando {currentActivities.length} de {filteredActivities.length} actividades
+            {searchTerm && ` para "${searchTerm}"`}
+          </Typography>
         </Box>
       </Box>
 
-      {/* Contador de resultados */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Mostrando {currentActivities.length} de {filteredActivities.length}{" "}
-          actividades
-          {searchTerm && ` para "${searchTerm}"`}
-        </Typography>
-      </Box>
-
-      <TableContainer component={Paper} elevation={2}>
-        <Table sx={{ minWidth: 650 }}>
-          <TableHead>
-            <TableRow
-              sx={{
-                backgroundColor: "#1976d2",
-                backgroundImage:
-                  "linear-gradient(45deg, #1565c0 0%, #1976d2 100%)",
-              }}
-            >
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                #
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 200,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Actividad
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 120,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Estado
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 150,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Responsable
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 120,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Zona
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 150,
-                  py: "2px",
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Sub-zona
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 120,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Tienda
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 150,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Razón Social
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 180,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Asignado
-              </TableCell>
-              <TableCell
-                sx={{
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "14px",
-                  minWidth: 180,
-                  py: 2,
-                  borderBottom: "none",
-                  backgroundColor: "#1976d2",
-                }}
-              >
-                Última Actualización
-              </TableCell>
-              {!isGuest && (
-                <TableCell
-                  sx={{
-                    color: "white",
-                    fontWeight: "bold",
-                    fontSize: "14px",
-                    width: 120,
-                    py: 2,
-                    borderBottom: "none",
-                    backgroundColor: "#1976d2",
-                  }}
-                >
-                  Acciones
-                </TableCell>
-              )}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentActivities.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={isGuest ? 9 : 10}
-                  align="center"
-                  sx={{ py: 4 }}
-                >
-                  <Typography variant="body1" color="text.secondary">
-                    {searchTerm
-                      ? "No se encontraron actividades para tu búsqueda"
-                      : "No hay actividades registradas"}
-                  </Typography>
-                </TableCell>
+      {/* Vista según el modo seleccionado */}
+      {viewMode === 'table' && !isMobile ? (
+        /* VISTA TABLA (Desktop) */
+        <TableContainer component={Paper} elevation={2} sx={{ overflow: 'auto' }}>
+          <Table sx={{ minWidth: 900 }} size="small">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: theme.palette.primary.main }}>
+                {[
+                  { label: '#', width: 60 },
+                  { label: 'Actividad', width: 200 },
+                  { label: 'Estado', width: 120 },
+                  { label: 'Responsable', width: 150 },
+                  { label: 'Zona', width: 120 },
+                  { label: 'Sub-zona', width: 150 },
+                  { label: 'Tienda', width: 120 },
+                  { label: 'Empresa', width: 150 },
+                  { label: 'Creado', width: 180 },
+                  { label: 'Última Actualización', width: 180 },
+                  ...(isAdmin ? [{ label: 'Acciones', width: 150 }] : []) // SOLO MOSTRAR ACCIONES PARA ADMIN
+                ].map((header) => (
+                  <TableCell
+                    key={header.label}
+                    sx={{
+                      color: "white",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                      py: 2,
+                      borderBottom: "none",
+                      minWidth: header.width,
+                      width: header.width,
+                      backgroundColor: '#1976d2'
+                    }}
+                  >
+                    {header.label}
+                  </TableCell>
+                ))}
               </TableRow>
-            ) : (
-              currentActivities.map((activity, index) => (
+            </TableHead>
+            <TableBody>
+              {currentActivities.map((activity, index) => (
                 <TableRow
                   key={activity.id}
                   sx={{
-                    backgroundColor: getRowBackgroundColor(index),
-                    "&:hover": {
-                      backgroundColor: getRowHoverColor(index),
-                      transition: "background-color 0.2s ease",
-                    },
-                    "& .MuiTableCell-root": {
-                      borderBottom: "1px solid",
-                      borderBottomColor: "divider",
-                      py: 1.5,
-                    },
+                    backgroundColor: index % 2 === 0 ? '#ffffff' : '#f8f9fa',
+                    '&:hover': { backgroundColor: '#e3f2fd' }
                   }}
                 >
                   <TableCell>{activity.id}</TableCell>
@@ -475,41 +434,19 @@ export const ActivityList = () => {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={statusLabels[activity.estado]}
-                      color={getStatusColor(activity.estado) as any}
-                      size="small"
-                    />
+                    <Chip label={statusLabels[activity.estado]} color={getStatusColor(activity.estado) as any} size="small" />
                   </TableCell>
-                  <TableCell>
-                    {formatNullableValue(activity.responsable)}
-                  </TableCell>
-                  <TableCell>
-                    {formatNullableValue(activity.zona?.zona)}
-                  </TableCell>
-                  <TableCell>
-                    {formatNullableValue(activity.zona?.subzona)}
-                  </TableCell>
-                  <TableCell>
-                    {formatNullableValue(activity.zona?.tienda)}
-                  </TableCell>
-                  <TableCell>
-                    {formatNullableValue(activity.zona?.empresa)}
-                  </TableCell>
-                  <TableCell>
-                    {activity.created_at
-                      ? formatDate(activity.created_at)
-                      : "—"}
-                  </TableCell>
+                  <TableCell>{formatNullableValue(activity.responsable)}</TableCell>
+                  <TableCell>{formatNullableValue(activity.zona?.zona)}</TableCell>
+                  <TableCell>{formatNullableValue(activity.zona?.subzona)}</TableCell>
+                  <TableCell>{formatNullableValue(activity.zona?.tienda)}</TableCell>
+                  <TableCell>{formatNullableValue(activity.zona?.empresa)}</TableCell>
+                  <TableCell>{formatDate(activity.created_at)}</TableCell>
+                  
                   <TableCell>
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography
-                        variant="caption"
-                        sx={{ color: "text.secondary" }}
-                      >
-                        {activity.updated_at
-                          ? formatDate(activity.updated_at)
-                          : "—"}
+                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        {formatDate(activity.updated_at)}
                       </Typography>
                       {activity.updated_at !== activity.created_at && (
                         <Tooltip title="Modificado">
@@ -527,22 +464,33 @@ export const ActivityList = () => {
                       )}
                     </Box>
                   </TableCell>
-                  {!isGuest && (
+                  
+                  {/* ACCIONES - SOLO PARA ADMINISTRADORES */}
+                  {isAdmin && (
                     <TableCell>
-                      <Tooltip title="Editar actividad">
-                        <IconButton
-                          onClick={() => {
-                            setCurrentActivity(activity);
-                            setEditDialogOpen(true);
-                          }}
-                          size="small"
-                          color="primary"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      {user.rol === "admin" && (
-                        <Tooltip title="Eliminar actividad">
+                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                        <Tooltip title="Editar">
+                          <IconButton
+                            onClick={() => {
+                              setCurrentActivity(activity);
+                              setEditDialogOpen(true);
+                            }}
+                            size="small"
+                            color="primary"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reporte">
+                          <IconButton
+                            onClick={() => handleGenerateReport(activity)}
+                            size="small"
+                            color="info"
+                          >
+                            <DescriptionIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
                           <IconButton
                             onClick={() => handleDeleteClick(activity.id)}
                             size="small"
@@ -551,17 +499,24 @@ export const ActivityList = () => {
                             <DeleteIcon />
                           </IconButton>
                         </Tooltip>
-                      )}
+                      </Box>
                     </TableCell>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        /* VISTA TARJETAS (Mobile) */
+        <Box>
+          {currentActivities.map((activity, index) => (
+            <ActivityCard key={activity.id} activity={activity} index={index} />
+          ))}
+        </Box>
+      )}
 
-      {/* Paginación */}
+      {/* Paginación Mejorada */}
       {filteredActivities.length > activitiesPerPage && (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: 2 }}>
           <Stack spacing={2}>
@@ -570,33 +525,26 @@ export const ActivityList = () => {
               page={currentPage}
               onChange={handlePageChange}
               color="primary"
-              showFirstButton
-              showLastButton
+              size={isSmallMobile ? "small" : "medium"}
+              showFirstButton={!isSmallMobile}
+              showLastButton={!isSmallMobile}
             />
           </Stack>
         </Box>
       )}
 
       {/* Información de paginación */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mt: 1,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 1, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="body2" color="text.secondary">
           Página {currentPage} de {totalPages}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {indexOfFirstActivity + 1}-
-          {Math.min(indexOfLastActivity, filteredActivities.length)} de{" "}
-          {filteredActivities.length} actividades
+          {indexOfFirstActivity + 1}-{Math.min(indexOfLastActivity, filteredActivities.length)} de {filteredActivities.length} actividades
         </Typography>
       </Box>
 
-      {!isGuest && (
+      {/* Diálogos - SOLO PARA ADMINISTRADORES */}
+      {isAdmin && (
         <>
           <AddActivityDialog
             open={addDialogOpen}
@@ -620,7 +568,14 @@ export const ActivityList = () => {
             title="Confirmar eliminación"
             message="¿Estás seguro que deseas eliminar esta actividad?"
             onConfirm={handleConfirmDelete}
-            onCancel={handleCancelDelete}
+            onCancel={() => setConfirmDialogOpen(false)}
+          />
+
+          <ActivityReport
+            open={reportDialogOpen}
+            onClose={() => setReportDialogOpen(false)}
+            activity={selectedActivity}
+            zona={selectedActivity ? zonas.find(z => z.id === selectedActivity.zona_id) || null : null}
           />
         </>
       )}

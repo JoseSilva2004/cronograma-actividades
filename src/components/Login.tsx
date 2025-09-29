@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../components/AuthContext';
 import { 
   Box, 
   TextField, 
@@ -10,19 +10,33 @@ import {
   CardContent,
   Container,
   CssBaseline,
-  Alert
+  Alert,
+  CircularProgress,
+  InputAdornment,
+  IconButton
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { Logo } from './Logo';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { Logo } from '../components/Logo';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Nuevo estado
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +48,7 @@ export const Login = () => {
       const from = location.state?.from?.pathname || '/activities';
       navigate(from, { replace: true });
     } catch (err) {
-      setError('Credenciales incorrectas');
+      setError('Credenciales incorrectas. Por favor, intenta nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -52,9 +66,9 @@ export const Login = () => {
           minHeight: '80vh'
         }}
       >
-        {/* Logo arriba del login */}
-        <Box sx={{ mb: 2, textAlign: 'center', backgroundColor: '#239423ff', color: 'white', padding: '10px', borderRadius: '25px' }}>
-          <Logo size="large" showText={false} />
+        {/* Logo */}
+        <Box sx={{ mb: 3, textAlign: 'center' }}>
+          <Logo size="large" showText={false} color="original" />
         </Box>
 
         <Card elevation={6} sx={{ width: '100%', maxWidth: 400 }}>
@@ -84,7 +98,7 @@ export const Login = () => {
               />
               <TextField
                 label="Contraseña"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 variant="outlined"
                 fullWidth
                 margin="normal"
@@ -93,6 +107,20 @@ export const Login = () => {
                 required
                 autoComplete="current-password"
                 disabled={loading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
               <Button
                 type="submit"
@@ -102,7 +130,7 @@ export const Login = () => {
                 sx={{ mt: 3, mb: 2, py: 1.5 }}
                 disabled={loading}
               >
-                {loading ? 'Ingresando...' : 'Ingresar'}
+                {loading ? <CircularProgress size={24} /> : 'Ingresar'}
               </Button>
             </form>
           </CardContent>

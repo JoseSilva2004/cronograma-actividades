@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://192.168.2.71:5000/api';
 
 // Interfaces de tipos
 export interface Activity {
@@ -26,11 +26,15 @@ export interface Zona {
   empresa: string;
 }
 
+// Tipos para usuarios
 export interface AuthenticatedUser {
   id: number;
   email: string;
   nombre: string;
-  rol: 'admin' | 'user';
+  rol: 'super_admin' | 'admin' | 'user';
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface GuestUser {
@@ -38,6 +42,32 @@ export interface GuestUser {
 }
 
 export type User = AuthenticatedUser | GuestUser;
+
+// Tipo específico para usuarios gestionables (excluye guest)
+export interface ManageableUser {
+  id: number;
+  email: string;
+  nombre: string;
+  rol: 'super_admin' | 'admin' | 'user';
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserInput {
+  email: string;
+  nombre: string;
+  password: string;
+  rol: 'admin' | 'user';
+}
+
+export interface UpdateUserInput {
+  email?: string;
+  nombre?: string;
+  password?: string;
+  rol?: 'admin' | 'user';
+  activo?: boolean;
+}
 
 export interface LoginResponse {
   token: string;
@@ -85,6 +115,12 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 
   if (!response.ok) {
     const errorData = await response.json();
+    
+    // Manejar específicamente el error de usuario inactivo
+    if (response.status === 403 && errorData.error?.includes('inactivo')) {
+      throw new Error('Usuario inactivo. Contacte al administrador.');
+    }
+    
     throw new Error(errorData.error || 'Error en el login');
   }
 
@@ -99,7 +135,24 @@ export const logout = () => {
 // Obtener el usuario actual desde localStorage
 export const getCurrentUser = (): User => {
   const userJson = localStorage.getItem('user');
-  return userJson ? (JSON.parse(userJson) as AuthenticatedUser) : { rol: 'guest' };
+  if (userJson) {
+    try {
+      const userData = JSON.parse(userJson);
+      // Asegurar que tenga la estructura correcta
+      return {
+        id: userData.id,
+        email: userData.email,
+        nombre: userData.nombre,
+        rol: userData.rol,
+        activo: userData.activo !== undefined ? userData.activo : true,
+        created_at: userData.created_at || new Date().toISOString(),
+        updated_at: userData.updated_at || new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+  }
+  return { rol: 'guest' };
 };
 
 // Obtener el perfil del usuario autenticado
@@ -197,4 +250,48 @@ export const deleteZona = async (id: number): Promise<void> => {
   await authFetch(`${API_URL}/zonas/${id}`, {
     method: 'DELETE'
   });
+};
+
+// Funciones para gestión de usuarios (solo super admin)
+export const fetchUsers = async (): Promise<ManageableUser[]> => {
+  const response = await authFetch(`${API_URL}/usuarios`);
+  const data = await response.json();
+  // Filtrar solo usuarios gestionables (excluir guests si existen)
+  return data.filter((user: any) => user.rol !== 'guest');
+};
+
+export const createUser = async (userData: CreateUserInput): Promise<ManageableUser> => {
+  const response = await authFetch(`${API_URL}/usuarios`, {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  });
+  return await response.json();
+};
+
+export const updateUser = async (id: number, userData: UpdateUserInput): Promise<ManageableUser> => {
+  const response = await authFetch(`${API_URL}/usuarios/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData)
+  });
+  return await response.json();
+};
+
+export const deleteUser = async (id: number): Promise<void> => {
+  await authFetch(`${API_URL}/usuarios/${id}`, {
+    method: 'DELETE'
+  });
+};
+
+// Función auxiliar para verificar si un usuario es gestionable
+export const isManageableUser = (user: User): user is ManageableUser => {
+  return user.rol !== 'guest';
+};
+
+// Función para verificar si el usuario actual es super admin
+export const isSuperAdmin = (user: User): boolean => {
+  return isManageableUser(user) && user.rol === 'super_admin';
+};
+
+export const deleteUserPermanent = async (id: number): Promise<void> => {
+  await authFetch(`${API_URL}/usuarios/${id}/permanente`, { method: 'DELETE' });
 };
