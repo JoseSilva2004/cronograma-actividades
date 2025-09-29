@@ -72,7 +72,7 @@ Sistema web completo para la gestión y seguimiento de actividades, desarrollado
 ### 3. 👥 Gestión de Usuarios (Solo Super Admin)
 #### Características:
 - 🔐 **Registro seguro** de nuevos usuarios
-- 👁️ **Visibilidad de contraseñas** con sistema de ojo
+- 👁️ **Visibilidad de contraseñas**
 - 📋 **Tabla completa** con información detallada
 - 🎯 **Control de estados** (activo/inactivo)
 - 🗑️ **Eliminación segura** (lógica y física)
