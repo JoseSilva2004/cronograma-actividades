@@ -83,3 +83,9 @@ Sistema web completo para la gestión y seguimiento de actividades, desarrollado
 - Eliminación temporal y permanente
 - Visualización segura de contraseñas
 - Copiado al portapapeles
+
+  ### Autenticación y Seguridad
+- 🔐 **Login seguro** con validación de estado de usuario
+- 🚫 **Protección de rutas** por roles
+- ⏰ **Tokens JWT** con expiración configurable
+- 🔒 **Middleware de autenticación** en todas las APIs
