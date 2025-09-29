@@ -395,7 +395,7 @@ export const ActivityList = () => {
                   { label: 'Zona', width: 120 },
                   { label: 'Sub-zona', width: 150 },
                   { label: 'Tienda', width: 120 },
-                  { label: 'Empresa', width: 150 },
+                  { label: 'Razón Social', width: 150 },
                   { label: 'Creado', width: 180 },
                   { label: 'Última Actualización', width: 180 },
                   ...(isAdmin ? [{ label: 'Acciones', width: 150 }] : []) // SOLO MOSTRAR ACCIONES PARA ADMIN
