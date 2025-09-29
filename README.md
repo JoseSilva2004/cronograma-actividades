@@ -91,3 +91,10 @@ Sistema web completo para la gestión y seguimiento de actividades, desarrollado
 - 🚫 **Protección de rutas** por roles
 - ⏰ **Tokens JWT** con expiración configurable
 - 🔒 **Middleware de autenticación** en todas las APIs
+
+### 5.📄Reportes y Exportación
+- 📄 **Generación de reportes** por actividad
+- 🖨️ **Funcionalidad de impresión** directa
+- 📥 **Descarga de reportes** en formato texto
+- 📊 **Dashboards exportables**
+
