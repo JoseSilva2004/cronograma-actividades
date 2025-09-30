@@ -2,7 +2,7 @@
 
 ## 🚀 Descripción del Proyecto
 
-Sistema web completo para la gestión y seguimiento de actividades, desarrollado con **React.js + TypeScript** en el frontend y **Node.js + Express + MySQL** en el backend. Diseñado específicamente para las necesidades operativas de GRUPO CANAIMA.
+Sistema web completo para la gestión y seguimiento de actividades, desarrollado con **React.js + TypeScript** en el frontend y **Node.js + Express + MySQL** en el backend. Diseñado para el departamento de soporte técnico de GRUPO CANAIMA.
 
 ---
 
