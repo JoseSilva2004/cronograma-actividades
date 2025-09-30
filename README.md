@@ -98,3 +98,34 @@ Sistema web completo para la gestión y seguimiento de actividades, desarrollado
 - 📥 **Descarga de reportes** en formato texto
 - 📊 **Dashboards exportables**
 
+## 🚀 Ejecución del Proyecto
+
+### 📋 Prerrequisitos
+
+Antes de ejecutar el proyecto, asegúrate de tener instalado:
+
+- **Node.js** (versión 16 o superior)
+- **npm** o **yarn** como gestor de paquetes
+- **MySQL** (versión 5.7 o superior)
+- **Git** para clonar el repositorio
+
+### 🔧 Configuración Inicial
+
+#### 1. 📥 Clonar el Repositorio
+```bash
+git clone https://github.com/JoseSilva2004/cronograma_actividades.git
+cd cronograma_actividades
+
+```
+
+#### 2. Correr el Backend
+```bash
+cd server
+npm run dev
+
+```
+
+#### 3. Correr el FrontEnd
+```bash
+npm run start
+
