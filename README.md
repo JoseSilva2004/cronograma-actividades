@@ -111,21 +111,40 @@ Antes de ejecutar el proyecto, asegúrate de tener instalado:
 
 ### 🔧 Configuración Inicial
 
-#### 1. 📥 Clonar el Repositorio
+#### 1. Clonar el Repositorio
 ```bash
 git clone https://github.com/JoseSilva2004/cronograma_actividades.git
 cd cronograma_actividades
 
 ```
 
-#### 2. Correr el Backend
+#### 2. 🔧 Instalar Dependencias
+
+```bash
+npm install
+
+```
+#### 3. ⚙️ Configurar variables de entorno
+
+```bash
+DB_HOST=0.0.0.0
+DB_PORT=TuPuerto
+DB_USER=TuUsuario
+DB_PASSWORD=TuContraseña
+DB_NAME=NombreBaseDatos
+JWT_SECRET=TuSecretoJWT
+SUPER_ADMIN_NAME=TuNombreUserSupAdmin
+SUPER_ADMIN_EMAIL=TuEmailUserSupAdmin
+SUPER_ADMIN_PASSWORD=TuContraseñaUserSupAdmin
+```
+#### 4. Correr el Backend
 ```bash
 cd server
 npm run dev
 
 ```
 
-#### 3. Correr el FrontEnd
+#### 5. Correr el FrontEnd
 ```bash
 npm run start
 
