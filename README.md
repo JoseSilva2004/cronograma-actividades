@@ -124,7 +124,7 @@ cd cronograma_actividades
 npm install
 
 ```
-#### 3. ⚙️ Configurar variables de entorno
+#### 3. ⚙️ Configurar variables de entorno (.env)
 
 ```bash
 DB_HOST=0.0.0.0
