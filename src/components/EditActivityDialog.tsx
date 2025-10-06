@@ -30,6 +30,7 @@ interface EditActivityDialogProps {
   onActivityUpdated: () => Promise<void>;
   activity: Activity;
   zonas: Zona[];
+  currentUser?: any;
 }
 
 export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
@@ -38,6 +39,7 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   onActivityUpdated,
   activity,
   zonas,
+  currentUser
 }) => {
   const [nombre, setNombre] = useState("");
   const [estado, setEstado] = useState<Status>("pendiente");
@@ -155,13 +157,12 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
         throw new Error("No se encontró una zona válida con los criterios seleccionados");
       }
 
-      // Si hay múltiples coincidencias, preferir la primera
       const zonaCompleta = zonasCoincidentes[0];
 
       await updateActivity(activity.id, {
         nombre: nombre.trim(),
         estado,
-        responsable: responsable === "—" ? "" : responsable,
+        responsable: responsable, // Usar el responsable seleccionado
         zona_id: zonaCompleta.id
       });
 
@@ -178,7 +179,6 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
   const handleClose = () => {
     onClose();
   };
-
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -225,41 +225,57 @@ export const EditActivityDialog: React.FC<EditActivityDialogProps> = ({
           </Select>
         </FormControl>
 
-        <FormControl
-          fullWidth
-          margin="dense"
-          sx={{ mt: 2 }}
-          error={errors.responsable}
-        >
-          <InputLabel id="responsable-label">Responsable *</InputLabel>
-          <Select
-            labelId="responsable-label"
-            label="Responsable *"
-            value={responsable}
-            onChange={(e) => {
-              setResponsable(e.target.value as string);
-              setErrors((prev) => ({ ...prev, responsable: false, form: "" }));
-            }}
-            required
-          >
-            {responsables.map((persona) => (
-              <MenuItem
-                key={persona.value}
-                value={persona.value}
-                disabled={persona.disabled}
-                sx={{
-                  fontStyle: persona.disabled ? "italic" : "normal",
-                  color: persona.disabled ? "text.secondary" : "text.primary",
-                }}
-              >
-                {persona.label}
+        {/* Selector de responsable - Diferente según el tipo de usuario */}
+        {currentUser?.rol === 'super_admin' ? (
+          // Super admin puede cambiar el responsable
+          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} error={errors.responsable}>
+            <InputLabel id="responsable-label">Responsable *</InputLabel>
+            <Select
+              labelId="responsable-label"
+              label="Responsable *"
+              value={responsable}
+              onChange={(e) => {
+                setResponsable(e.target.value as string);
+                setErrors((prev) => ({ ...prev, responsable: false, form: "" }));
+              }}
+              required
+            >
+              <MenuItem value="" disabled>
+                Seleccione un responsable
               </MenuItem>
-            ))}
-          </Select>
-          {errors.responsable && (
-            <FormHelperText>Seleccione un responsable</FormHelperText>
-          )}
-        </FormControl>
+              {responsables
+                .filter(persona => !persona.disabled && persona.value !== '')
+                .map((persona) => (
+                  <MenuItem 
+                    key={persona.value} 
+                    value={persona.value}
+                  >
+                    {persona.label}
+                    {persona.value === currentUser.nombre && " (Tú)"}
+                  </MenuItem>
+                ))}
+            </Select>
+            {errors.responsable && <FormHelperText>Seleccione un responsable</FormHelperText>}
+          </FormControl>
+        ) : (
+          // Admin normal - responsable no editable
+          <FormControl fullWidth margin="dense" sx={{ mt: 2 }} disabled>
+            <InputLabel id="responsable-label">Responsable</InputLabel>
+            <Select
+              labelId="responsable-label"
+              label="Responsable"
+              value={responsable}
+            >
+              <MenuItem value={responsable}>
+                {responsable}
+                {responsable === currentUser?.nombre && " (Tú)"}
+              </MenuItem>
+            </Select>
+            <FormHelperText>
+              El responsable no se puede modificar
+            </FormHelperText>
+          </FormControl>
+        )}
 
         <FormControl
           fullWidth

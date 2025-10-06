@@ -1,4 +1,4 @@
-const API_URL = 'http://192.168.2.71:5000/api';
+const API_URL = 'http://192.168.250.1:5000/api';
 
 // Interfaces de tipos
 export interface Activity {
@@ -38,6 +38,7 @@ export interface AuthenticatedUser {
 }
 
 export interface GuestUser {
+  nombre: string;
   rol: 'guest';
 }
 
@@ -152,7 +153,7 @@ export const getCurrentUser = (): User => {
       console.error('Error parsing user data:', error);
     }
   }
-  return { rol: 'guest' };
+  return { rol: 'guest', nombre: 'Invitado' };
 };
 
 // Obtener el perfil del usuario autenticado

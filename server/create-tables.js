@@ -32,7 +32,7 @@ async function initializeDatabase() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       nombre VARCHAR(255) NOT NULL,
       estado ENUM('pendiente', 'en_progreso', 'programado', 'en_ejecucion', 'completado') NOT NULL,
-      responsable VARCHAR(255),
+      responsable VARCHAR(255) NOT NULL,
       zona_id INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

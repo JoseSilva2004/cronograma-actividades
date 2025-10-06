@@ -28,8 +28,8 @@
   "scripts": {
    "start": "react-scripts start",
     "build": "react-scripts build",
-    "dev": "set REACT_APP_API_URL=http://192.168.2.71:5000/api&&react-scripts start",
-    "start-with-ip": "set REACT_APP_API_URL=http://192.168.2.71:5000/api&&react-scripts start",
+    "dev": "set REACT_APP_API_URL=http://192.168.250.1:5000/api&&react-scripts start",
+    "start-with-ip": "set REACT_APP_API_URL=http://192.168.250.1:5000/api&&react-scripts start",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -69,6 +69,25 @@ export const ActivityList = () => {
   const user = getCurrentUser();
   const isAdmin = user.rol === "admin" || user.rol === "super_admin";
 
+  // Función para verificar si el usuario puede gestionar una actividad
+  const canManageActivity = (activity: Activity): boolean => {
+    // Super admin puede gestionar todo
+    if (user.rol === 'super_admin') return true;
+    
+    // Admin solo puede gestionar sus propias actividades (por nombre)
+    if (user.rol === 'admin') {
+      return activity.responsable === user.nombre;
+    }
+    
+    // Usuarios normales y guest NO pueden gestionar actividades
+    return false;
+  };
+
+  // Función para verificar si puede ver botones de acción
+  const canSeeActions = (): boolean => {
+    return user.rol === 'super_admin' || user.rol === 'admin';
+  };
+
   // Cargar datos
   const loadData = async () => {
     try {
@@ -229,6 +248,7 @@ export const ActivityList = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="body2">
             👤 {formatNullableValue(activity.responsable)}
+            {activity.responsable === user.nombre && " (Tú)"}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {formatDate(activity.created_at)}
@@ -255,8 +275,8 @@ export const ActivityList = () => {
           )}
         </Box>
 
-        {/* Acciones - SOLO PARA ADMINISTRADORES */}
-        {isAdmin && (
+        {/* Acciones - SOLO PARA USUARIOS CON PERMISOS Y ACTIVIDADES PROPIAS */}
+        {canSeeActions() && canManageActivity(activity) && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
             <Tooltip title="Editar">
               <IconButton
@@ -316,6 +336,8 @@ export const ActivityList = () => {
         }}>
           <Typography variant="h5" component="h1" sx={{ fontWeight: "bold", color: "primary.main" }}>
             📋 Lista de Actividades
+            {user.rol === 'admin' && " - Mis Actividades"}
+            {(user.rol === 'user' || user.rol === 'guest') && " - Todas las Actividades"}
           </Typography>
 
           <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: 'wrap' }}>
@@ -376,6 +398,8 @@ export const ActivityList = () => {
           <Typography variant="body2" color="text.secondary">
             Mostrando {currentActivities.length} de {filteredActivities.length} actividades
             {searchTerm && ` para "${searchTerm}"`}
+            {user.rol === 'admin' && " (solo puedes gestionar tus actividades)"}
+            {(user.rol === 'user' || user.rol === 'guest') && " (solo lectura)"}
           </Typography>
         </Box>
       </Box>
@@ -398,7 +422,7 @@ export const ActivityList = () => {
                   { label: 'Razón Social', width: 150 },
                   { label: 'Creado', width: 180 },
                   { label: 'Última Actualización', width: 180 },
-                  ...(isAdmin ? [{ label: 'Acciones', width: 150 }] : []) // SOLO MOSTRAR ACCIONES PARA ADMIN
+                  ...(canSeeActions() ? [{ label: 'Acciones', width: 150 }] : [])
                 ].map((header) => (
                   <TableCell
                     key={header.label}
@@ -436,7 +460,10 @@ export const ActivityList = () => {
                   <TableCell>
                     <Chip label={statusLabels[activity.estado]} color={getStatusColor(activity.estado) as any} size="small" />
                   </TableCell>
-                  <TableCell>{formatNullableValue(activity.responsable)}</TableCell>
+                  <TableCell>
+                    {formatNullableValue(activity.responsable)}
+                    {activity.responsable === user.nombre && " (Tú)"}
+                  </TableCell>
                   <TableCell>{formatNullableValue(activity.zona?.zona)}</TableCell>
                   <TableCell>{formatNullableValue(activity.zona?.subzona)}</TableCell>
                   <TableCell>{formatNullableValue(activity.zona?.tienda)}</TableCell>
@@ -465,8 +492,8 @@ export const ActivityList = () => {
                     </Box>
                   </TableCell>
                   
-                  {/* ACCIONES - SOLO PARA ADMINISTRADORES */}
-                  {isAdmin && (
+                  {/* ACCIONES - SOLO PARA USUARIOS CON PERMISOS Y ACTIVIDADES PROPIAS */}
+                  {canSeeActions() && canManageActivity(activity) && (
                     <TableCell>
                       <Box sx={{ display: "flex", gap: 0.5 }}>
                         <Tooltip title="Editar">
@@ -551,9 +578,10 @@ export const ActivityList = () => {
             onClose={() => setAddDialogOpen(false)}
             onActivityAdded={loadData}
             zonas={zonas}
+            currentUser={user}
           />
 
-          {currentActivity && (
+          {currentActivity && canManageActivity(currentActivity) && (
             <EditActivityDialog
               open={editDialogOpen}
               onClose={() => setEditDialogOpen(false)}

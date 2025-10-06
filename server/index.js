@@ -59,7 +59,7 @@ async function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 }
-// Middleware para verificar super administrador - CORREGIDO
+// Middleware para verificar super administrador
 function requireSuperAdmin(req, res, next) {
   // Verificar que req.user existe
   if (!req.user) {
@@ -154,10 +154,10 @@ app.get('/api/me', (req, res) => {
   res.json(req.user);
 });
 
-// Endpoints de actividades (protegidos)
+// Endpoint para obtener actividades - FILTRAR POR NOMBRE DE USUARIO
 app.get('/api/actividades', async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    let query = `
       SELECT a.*, 
              COALESCE(z.zona, '-') as zona, 
              COALESCE(z.subzona, '-') as subzona,
@@ -165,8 +165,20 @@ app.get('/api/actividades', async (req, res) => {
              COALESCE(z.empresa, '-') as empresa
       FROM actividades a
       LEFT JOIN zonas z ON a.zona_id = z.id
-      ORDER BY a.updated_at DESC
-    `);
+    `;
+    
+    const params = [];
+    
+    //Permitir que super_admin y guest y usuarios normales vean todas las actividades
+    if (req.user.rol !== 'super_admin' && req.user.rol !== 'guest' && req.user.rol !== 'user') {
+      // Los administradores normales solo ven sus propias actividades (por nombre de usuario)
+      query += ' WHERE a.responsable = ?';
+      params.push(req.user.nombre); // Filtrar por NOMBRE del usuario logueado
+    }
+    
+    query += ' ORDER BY a.updated_at DESC';
+    
+    const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
     console.error('Error al obtener actividades:', error);
@@ -174,6 +186,7 @@ app.get('/api/actividades', async (req, res) => {
   }
 });
 
+// Endpoint para crear actividad
 app.post('/api/actividades', async (req, res) => {
   // Solo permitir a admin y super_admin crear actividades
   if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
@@ -183,6 +196,43 @@ app.post('/api/actividades', async (req, res) => {
   const { nombre, estado, responsable, zona_id } = req.body;
   
   try {
+    // Validaciones de campos obligatorios
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ error: 'El nombre de la actividad es obligatorio' });
+    }
+    
+    if (!estado) {
+      return res.status(400).json({ error: 'El estado es obligatorio' });
+    }
+    
+    if (!responsable || !responsable.trim()) {
+      return res.status(400).json({ error: 'El responsable es obligatorio' });
+    }
+
+    // Validar que el estado sea válido
+    const estadosValidos = ['pendiente', 'en_progreso', 'programado', 'en_ejecucion', 'completado'];
+    if (!estadosValidos.includes(estado)) {
+      return res.status(400).json({ error: 'Estado no válido' });
+    }
+
+    // Para admin normal, verificar que el responsable sea él mismo
+    if (req.user.rol === 'admin') {
+      if (responsable !== req.user.nombre) {
+        return res.status(403).json({ 
+          error: 'Solo puedes asignarte actividades a ti mismo. No puedes asignar actividades a otros responsables.' 
+        });
+      }
+    }
+
+    // Para super_admin, verificar que el responsable exista en la lista de responsables válidos
+    if (req.user.rol === 'super_admin') {
+      // Aquí podrías validar contra la base de datos si quieres verificar que el responsable existe como usuario
+      // Por ahora validamos que no esté vacío y tenga un formato básico
+      if (!responsable.trim()) {
+        return res.status(400).json({ error: 'Debe seleccionar un responsable válido' });
+      }
+    }
+
     // Solo validar zona_id si se proporciona
     if (zona_id) {
       const [zona] = await pool.query('SELECT id FROM zonas WHERE id = ?', [zona_id]);
@@ -191,11 +241,13 @@ app.post('/api/actividades', async (req, res) => {
       }
     }
 
+    // Insertar actividad con el responsable proporcionado
     const [result] = await pool.query(
       'INSERT INTO actividades (nombre, estado, responsable, zona_id) VALUES (?, ?, ?, ?)',
-      [nombre, estado, responsable || null, zona_id || null]
+      [nombre.trim(), estado, responsable.trim(), zona_id || null]
     );
     
+    // Obtener la actividad recién creada con información de la zona
     const [newActivity] = await pool.query(`
       SELECT a.*, 
              COALESCE(z.zona, '-') as zona,
@@ -210,10 +262,21 @@ app.post('/api/actividades', async (req, res) => {
     res.status(201).json(newActivity[0]);
   } catch (error) {
     console.error('Error al crear actividad:', error);
-    res.status(500).json({ error: 'Error al crear actividad' });
+    
+    // Manejar errores específicos de la base de datos
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Ya existe una actividad con estos datos' });
+    }
+    
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ error: 'La zona referenciada no existe' });
+    }
+    
+    res.status(500).json({ error: 'Error interno del servidor al crear actividad' });
   }
 });
 
+// Endpoint para editar actividad
 app.put('/api/actividades/:id', async (req, res) => {
   // Solo permitir a admin y super_admin editar actividades
   if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
@@ -224,10 +287,44 @@ app.put('/api/actividades/:id', async (req, res) => {
   const { nombre, estado, responsable, zona_id } = req.body;
 
   try {
+    // Validaciones de campos obligatorios
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ error: 'El nombre de la actividad es obligatorio' });
+    }
+    
+    if (!estado) {
+      return res.status(400).json({ error: 'El estado es obligatorio' });
+    }
+
+    // Validar que el estado sea válido
+    const estadosValidos = ['pendiente', 'en_progreso', 'programado', 'en_ejecucion', 'completado'];
+    if (!estadosValidos.includes(estado)) {
+      return res.status(400).json({ error: 'Estado no válido' });
+    }
+
     // Verificar si la actividad existe
-    const [actividad] = await pool.query('SELECT id FROM actividades WHERE id = ?', [id]);
+    const [actividad] = await pool.query('SELECT id, responsable FROM actividades WHERE id = ?', [id]);
     if (actividad.length === 0) {
       return res.status(404).json({ error: 'Actividad no encontrada' });
+    }
+
+    const actividadData = actividad[0];
+    
+    // Verificar permisos: super_admin puede editar todo, admin solo sus actividades
+    if (req.user.rol === 'admin' && actividadData.responsable !== req.user.nombre) {
+      return res.status(403).json({ error: 'Solo puedes editar tus propias actividades' });
+    }
+
+    // Para admin normal, verificar que no intente cambiar el responsable
+    if (req.user.rol === 'admin' && responsable && responsable !== req.user.nombre) {
+      return res.status(403).json({ 
+        error: 'No puedes cambiar el responsable de la actividad. Solo puedes asignarte actividades a ti mismo.' 
+      });
+    }
+
+    // Para super_admin, validar el responsable si se proporciona
+    if (req.user.rol === 'super_admin' && responsable && !responsable.trim()) {
+      return res.status(400).json({ error: 'Debe seleccionar un responsable válido' });
     }
 
     // Verificar si la zona_id es válida (si se proporciona)
@@ -238,20 +335,47 @@ app.put('/api/actividades/:id', async (req, res) => {
       }
     }
 
-    await pool.query(
-      'UPDATE actividades SET nombre = ?, estado = ?, responsable = ?, zona_id = ? WHERE id = ?',
-      [nombre, estado, responsable, zona_id || null, id]
-    );
+    // Construir la query de actualización dinámicamente
+    let updateQuery = 'UPDATE actividades SET nombre = ?, estado = ?, zona_id = ?';
+    const queryParams = [nombre.trim(), estado, zona_id || null];
 
-    const [updatedActivity] = await pool.query('SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa FROM actividades a LEFT JOIN zonas z ON a.zona_id = z.id WHERE a.id = ?', [id]);
+    // Solo permitir cambiar el responsable si es super_admin y se proporciona un responsable
+    if (req.user.rol === 'super_admin' && responsable) {
+      updateQuery += ', responsable = ?';
+      queryParams.push(responsable.trim());
+    }
 
-     res.status(200).json(updatedActivity[0]);
+    updateQuery += ' WHERE id = ?';
+    queryParams.push(id);
+
+    await pool.query(updateQuery, queryParams);
+
+    // Obtener la actividad actualizada
+    const [updatedActivity] = await pool.query(`
+      SELECT a.*, z.zona, z.subzona, z.tienda, z.empresa 
+      FROM actividades a 
+      LEFT JOIN zonas z ON a.zona_id = z.id 
+      WHERE a.id = ?
+    `, [id]);
+
+    res.status(200).json(updatedActivity[0]);
   } catch (error) {
     console.error(`Error al actualizar actividad con id ${id}:`, error);
+    
+    // Manejar errores específicos de la base de datos
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'Ya existe una actividad con estos datos' });
+    }
+    
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ error: 'La zona referenciada no existe' });
+    }
+    
     res.status(500).json({ error: 'Error en el servidor al actualizar la actividad' });
   }
 });
 
+// Endpoint para eliminar actividad - VERIFICAR QUE SEA DEL RESPONSABLE
 app.delete('/api/actividades/:id', async (req, res) => {
   // Verificar permisos - solo admin puede eliminar
   if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
@@ -262,20 +386,25 @@ app.delete('/api/actividades/:id', async (req, res) => {
   
   try {
     // Verificar si la actividad existe
-    const [actividad] = await pool.query('SELECT id FROM actividades WHERE id = ?', [id]);
+    const [actividad] = await pool.query('SELECT id, responsable FROM actividades WHERE id = ?', [id]);
     if (actividad.length === 0) {
       return res.status(404).json({ error: 'Actividad no encontrada' });
+    }
+
+    const actividadData = actividad[0];
+    
+    // Verificar permisos: super_admin puede eliminar todo, admin solo sus actividades
+    if (req.user.rol === 'admin' && actividadData.responsable !== req.user.nombre) {
+      return res.status(403).json({ error: 'Solo puedes eliminar tus propias actividades' });
     }
 
     // Eliminar la actividad
     await pool.query('DELETE FROM actividades WHERE id = ?', [id]);
     
-    // Respuesta exitosa sin contenido (204 No Content)
     res.status(204).send();
   } catch (error) {
     console.error('Error al eliminar actividad:', error);
     
-    // Manejar errores específicos de FK u otros
     if (error.code === 'ER_ROW_IS_REFERENCED_2') {
       return res.status(400).json({ 
         error: 'No se puede eliminar la actividad porque está siendo referenciada por otros registros'
@@ -494,7 +623,7 @@ app.use('/api/*', (req, res) => {
 });
 
 // Iniciar servidor
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.DB_PORT || 5000;
 
 initializeDatabase().then(() => {
   app.listen(PORT, () => {

@@ -30,13 +30,15 @@ interface AddActivityDialogProps {
   onClose: () => void;
   onActivityAdded: () => void;
   zonas: Zona[];
+  currentUser: any;
 }
 
 export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
   open,
   onClose,
   onActivityAdded,
-  zonas 
+  zonas,
+  currentUser
 }) => {
   const [nombre, setNombre] = useState('');
   const [estado, setEstado] = useState<Status>('pendiente');
@@ -57,6 +59,33 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
   const [subzonasFiltradas, setSubzonasFiltradas] = useState<string[]>([]);
   const [tiendasFiltradas, setTiendasFiltradas] = useState<string[]>([]);
   const [empresasFiltradas, setEmpresasFiltradas] = useState<string[]>([]);
+
+  // Inicializar responsable SOLO cuando se abre el diálogo por primera vez
+  useEffect(() => {
+    if (open) {
+      if (currentUser.rol === 'super_admin') {
+        // Super admin: dejar vacío para que seleccione
+        setResponsable('');
+      } else {
+        // Admin normal: asignarse automáticamente
+        setResponsable(currentUser.nombre);
+      }
+      
+      // Resetear otros campos
+      setNombre('');
+      setEstado('pendiente');
+      setZonaSeleccionada('');
+      setSubzonaSeleccionada(null);
+      setTiendaSeleccionada(null);
+      setEmpresaSeleccionada(null);
+      setErrors({
+        nombre: false,
+        responsable: false,
+        zona: false,
+        form: ''
+      });
+    }
+  }, [open, currentUser]);
 
   // Cargar zonas únicas
   useEffect(() => {
@@ -146,13 +175,12 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
         throw new Error('No se encontró la zona seleccionada con los filtros dados');
       }
 
-      // Preferir la primera coincidencia
       const zonaCompleta = zonasCoincidentes[0];
 
       await createActivity({ 
         nombre: nombre.trim(), 
         estado, 
-        responsable,
+        responsable: responsable, // Usar el responsable seleccionado
         zona_id: zonaCompleta.id
       });
       
@@ -169,19 +197,6 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
   };
 
   const handleClose = () => {
-    setNombre('');
-    setEstado('pendiente');
-    setResponsable('');
-    setZonaSeleccionada('');
-    setSubzonaSeleccionada(null);
-    setTiendaSeleccionada(null);
-    setEmpresaSeleccionada(null);
-    setErrors({
-      nombre: false,
-      responsable: false,
-      zona: false,
-      form: ''
-    });
     onClose();
   };
 
@@ -230,30 +245,56 @@ export const AddActivityDialog: React.FC<AddActivityDialogProps> = ({
           </Select>
         </FormControl>
 
-        <FormControl fullWidth margin="dense" error={errors.responsable}>
-          <InputLabel id="responsable-label">Responsable *</InputLabel>
-          <Select
-            labelId="responsable-label"
-            label="Responsable *"
-            value={responsable}
-            onChange={(e) => {
-              setResponsable(e.target.value as string);
-              setErrors(prev => ({...prev, responsable: false, form: ''}));
-            }}
-            required
-          >
-            {responsables.map((persona) => (
-              <MenuItem 
-                key={persona.value} 
-                value={persona.value}
-                disabled={persona.disabled}
-              >
-                {persona.label}
+        {/* Selector de responsable - Diferente según el tipo de usuario */}
+        {currentUser.rol === 'super_admin' ? (
+          // Super admin puede elegir cualquier responsable
+          <FormControl fullWidth margin="dense" error={errors.responsable}>
+            <InputLabel id="responsable-label">Responsable *</InputLabel>
+            <Select
+              labelId="responsable-label"
+              label="Responsable *"
+              value={responsable}
+              onChange={(e) => {
+                setResponsable(e.target.value as string);
+                setErrors(prev => ({...prev, responsable: false, form: ''}));
+              }}
+              required
+            >
+              <MenuItem value="" disabled>
+                Seleccione un responsable
               </MenuItem>
-            ))}
-          </Select>
-          {errors.responsable && <FormHelperText>Seleccione un responsable</FormHelperText>}
-        </FormControl>
+              {responsables
+                .filter(persona => !persona.disabled && persona.value !== '')
+                .map((persona) => (
+                  <MenuItem 
+                    key={persona.value} 
+                    value={persona.value}
+                  >
+                    {persona.label}
+                    {persona.value === currentUser.nombre && " (Tú)"}
+                  </MenuItem>
+                ))}
+            </Select>
+            {errors.responsable && <FormHelperText>Seleccione un responsable</FormHelperText>}
+          </FormControl>
+        ) : (
+          // Admin normal - asignado automáticamente
+          <FormControl fullWidth margin="dense" disabled>
+            <InputLabel id="responsable-label">Responsable</InputLabel>
+            <Select
+              labelId="responsable-label"
+              label="Responsable"
+              value={currentUser.nombre}
+            >
+              <MenuItem value={currentUser.nombre}>
+                {currentUser.nombre} (Tú)
+              </MenuItem>
+            </Select>
+            <FormHelperText>
+              La actividad se asignará automáticamente a tu usuario
+            </FormHelperText>
+          </FormControl>
+        )}
 
         <FormControl fullWidth margin="dense" error={errors.zona}>
           <InputLabel id="zona-label">Zona *</InputLabel>
